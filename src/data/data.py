@@ -12,7 +12,7 @@ def process_reference_text(reference_text):
     current_section = None
     for line in reference_text:
         if line.endswith(SECTION_SUFFIX):
-            current_section = line[:-1].strip()  # Remove the section suffix
+            current_section = line[:-1].strip()
         else:
             data.append({
                 "Platform": HUMAN_PLATFORM,
@@ -30,7 +30,7 @@ def process_chatbot_responses(chatbot_text):
         if RESPONSE_PREFIX in line:
             current_chatbot = line.split(RESPONSE_PREFIX)[-1].strip()
         elif line.endswith(SECTION_SUFFIX):
-            current_section = line[:-1].strip()  # Remove the section suffix
+            current_section = line[:-1].strip()
         else:
             data.append({
                 "Platform": current_chatbot,

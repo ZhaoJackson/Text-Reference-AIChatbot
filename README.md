@@ -46,13 +46,13 @@ Text-Reference-AIChatbot/
 ### Key Findings
 
 The evaluation scores reveal the following trends across chatbots (ChatGPT-4.0, Claude, JackAI):
-- ##Precision (ROUGE and METEOR Scores)##: Chatbots show moderate alignment, with ROUGE scores averaging between 0.31 and 0.34 and METEOR scores around 0.27-0.36. This indicates that while chatbot responses are similar to reference texts, there is room for improved textual alignment.
+- Precision (ROUGE and METEOR Scores): Chatbots show moderate alignment, with ROUGE scores averaging between 0.31 and 0.34 and METEOR scores around 0.27-0.36. This indicates that while chatbot responses are similar to reference texts, there is room for improved textual alignment.
 
-- ##Ethical Alignment##: Ethical scores are relatively low (average of 0.10 to 0.14), highlighting the need for greater adherence to ethical standards in responses related to suicidality.
+- Ethical Alignment: Ethical scores are relatively low (average of 0.10 to 0.14), highlighting the need for greater adherence to ethical standards in responses related to suicidality.
 
-- ##Inclusivity##: Inclusivity scores are uniformly low, suggesting a gap in language adaptation specifically for LGBTQ+ inclusivity. Further tuning of chatbots is essential for better inclusivity.
+- Inclusivity: Inclusivity scores are uniformly low, suggesting a gap in language adaptation specifically for LGBTQ+ inclusivity. Further tuning of chatbots is essential for better inclusivity.
 
-- ##Sentiment Distribution and Complexity##: The sentiment distribution remains steady across responses, but complexity scores vary slightly (49.99 to 52.14), suggesting slight differences in readability and linguistic sophistication across models.
+- Sentiment Distribution and Complexity: The sentiment distribution remains steady across responses, but complexity scores vary slightly (49.99 to 52.14), suggesting slight differences in readability and linguistic sophistication across models.
 
 The evaluation results suggest that while current AI models perform adequately, improvements are needed in ethical alignment and inclusivity to better serve LGBTQ+ individuals in sensitive mental health contexts.
 

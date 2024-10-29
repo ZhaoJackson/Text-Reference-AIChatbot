@@ -1,5 +1,4 @@
 # commonconst.py
-
 import csv
 import docx
 import nltk
@@ -8,12 +7,17 @@ from rouge_score import rouge_scorer
 from transformers import BertTokenizer, TFBertForSequenceClassification
 import tensorflow as tf
 
-# File paths
+# Original file paths
 REFERENCE_DOCX_PATH = 'src/data/Test Reference Text.docx'
 CHATBOT_DOCX_PATH = 'src/data/Test Chatbot text.docx'
+
+# Updated file paths for processed and integrated CSV outputs
 REFERENCE_CSV_PATH = 'src/data/reference_text.csv'
 CHATBOT_CSV_PATH = 'src/data/chatbot_text.csv'
 OUTPUT_CSV_PATH = 'src/outputs/evaluation_scores.csv'
+INTEGRATED_OUTPUT_CSV_PATH = 'src/outputs/integrated_chatbot_responses.csv'
+CHATBOT_PROCESSED_CSV_PATH = 'src/outputs/processed_chatbot_text.csv'
+REFERENCE_PROCESSED_CSV_PATH = 'src/outputs/processed_reference_text.csv'
 
 # Field names for CSV
 FIELDNAMES = ["Platform", "Topics", "Response"]

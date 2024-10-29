@@ -1,4 +1,6 @@
 from src.commonconst import *
+import csv
+import pandas as pd
 
 def extract_text_from_docx(doc_path):
     """Extracts text from a .docx file."""
@@ -39,9 +41,39 @@ def process_chatbot_responses(chatbot_text):
             })
     return data
 
-def save_to_csv(file_path, fieldnames, data):
-    """Saves data to a CSV file."""
-    with open(file_path, mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(data)
+def save_processed_files(chatbot_text, reference_text, chatbot_output_path, reference_output_path, integrated_output_path):
+    """Processes and saves chatbot, reference text, and integrated responses into CSV files."""
+    
+    def save_to_csv(file_path, fieldnames, data):
+        """Saves data to a CSV file."""
+        with open(file_path, mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(data)
+
+    # Process and save chatbot responses
+    chatbot_data = process_chatbot_responses(chatbot_text)
+    save_to_csv(chatbot_output_path, ['Platform', 'Topics', 'Response'], chatbot_data)
+    
+    # Process and save reference text
+    reference_data = process_reference_text(reference_text)
+    save_to_csv(reference_output_path, ['Platform', 'Topics', 'Response'], reference_data)
+    
+    # Integrate responses and save the combined result
+    chatbot_text_df = pd.DataFrame(chatbot_data)
+    reference_text_df = pd.DataFrame(reference_data)
+    
+    # Aggregating responses in chatbot_text by platform
+    chatbot_aggregated = chatbot_text_df.groupby('Platform')['Response'].apply(' '.join).reset_index()
+    
+    # Aggregating all responses for the Human platform in reference_text
+    human_response = ' '.join(reference_text_df['Response'].tolist())
+    reference_aggregated = pd.DataFrame([{'Platform': 'Human', 'Response': human_response}])
+    
+    # Combine chatbot and reference text into one dataframe
+    integrated_df = pd.concat([chatbot_aggregated, reference_aggregated], ignore_index=True)
+    integrated_df.to_csv(integrated_output_path, index=False)
+    
+    print(f"Processed chatbot responses saved to {chatbot_output_path}")
+    print(f"Processed reference text saved to {reference_output_path}")
+    print(f"Integrated responses saved to {integrated_output_path}")

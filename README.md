@@ -1,11 +1,11 @@
-# AI Machine-Driven Evaluation of Chatbot Responses in Suicidality Assessment Among LGBTQ+ Individuals
+# Enhancing Equity and Actionability in Artificial Intelligence (AI) and Large Language Model (LLM) Chatbots: Machine-Driven Benchmarking for Suicide Prevention Among LGBTQ+ Populations
 
 ## Overview
-- This project evaluates AI chatbot responses in assessing suicidality within the LGBTQ+ community by comparing AI-generated outputs with human reference responses. By measuring precision, ethical alignment, inclusivity, and linguistic complexity, the project aims to ensure chatbot responses are supportive, unbiased, and ethically aligned with human standards in sensitive mental health contexts.
+- This project examines the effectiveness of AI chatbots in responding to high-stakes mental health topics, focusing on suicidality within LGBTQ+ communities. By comparing AI-generated responses to expert-crafted human references, this study assesses the AI’s alignment with human standards on precision, ethical alignment, inclusivity, and complexity. The goal is to ensure that chatbots provide supportive, unbiased, and ethically sound assistance, particularly in sensitive mental health contexts.
 
 ## Motivation
 
-Mental health chatbots are becoming a staple in supportive roles within healthcare. However, ensuring these tools respond with sensitivity and inclusivity, particularly for vulnerable groups like LGBTQ+ individuals, is crucial. This project evaluates chatbot responses in high-stakes scenarios, focusing on suicidality risk assessment, and compares them to human references for improvement in AI responsiveness and empathy.
+With mental health chatbots increasingly being used in healthcare, it is vital that they respond with sensitivity, particularly toward vulnerable populations like LGBTQ+ individuals. This project evaluates AI responses in critical mental health scenarios to identify areas where AI responsiveness and empathy can improve. This evaluation highlights gaps in chatbot response quality to foster advancements in AI support for LGBTQ+ mental health.
 
 ## Structure
 ```
@@ -29,32 +29,29 @@ Text-Reference-AIChatbot/
 ```
 
 ## Methodology
-1. Data Preprocessing:
-- The chatbot and human response data are preprocessed using data.py to ensure alignment in format for accurate comparisons.
+1. **Data Preprocessing**:
+- The `data.py` script standardizes chatbot and human response data formats to facilitate accurate metric comparisons.
 
-2. Evaluation Metrics:
+2. **Evaluation Metrics**:
 - Precision (ROUGE, METEOR): Measures textual similarity between chatbot responses and human references.
 - Ethical Alignment: Assesses the ethical language and appropriateness of chatbot responses in sensitive contexts.
 - Inclusivity Score: Evaluates language for inclusivity, especially relating to LGBTQ+ identity and related nuances.
 - Sentiment Distribution: Analyzes response tone to ensure it is appropriate for mental health support.
 - Complexity Score: Provides insights into the linguistic sophistication and readability of responses, ensuring clarity without compromising sensitivity.
 
-3. Execution Flow:
-- The main.py script orchestrates data processing, metric evaluation using evaluation_algo.py, and result aggregation in evaluation_scores.csv for comparative analysis.
+3. **Execution Flow**:
+- The `main.py` script orchestrates data processing, metric evaluation using evaluation_algo.py, and result aggregation in `evaluation_scores.csv` for comparative analysis.
 
 ## Results Summary
 ### Key Findings
 
-The evaluation scores reveal the following trends across chatbots (ChatGPT-4.0, Claude, JackAI):
-- Precision (ROUGE and METEOR Scores): Chatbots show moderate alignment, with ROUGE scores averaging between 0.31 and 0.34 and METEOR scores around 0.27-0.36. This indicates that while chatbot responses are similar to reference texts, there is room for improved textual alignment.
+Evaluating multiple chatbots (e.g., ChatGPT-4, Claude, JackAI) revealed the following:
+1. **Precision**: ROUGE and METEOR scores averaged between 0.31–0.34 and 0.27–0.36, respectively, indicating moderate alignment with reference texts.
+2. **Ethical Alignment**: Ethical scores averaged 0.10–0.14, signaling a need for enhanced adherence to mental health ethics in AI responses.
+3. **Inclusivity**: Low inclusivity scores highlighted significant room for improvement in language that is sensitive and supportive toward LGBTQ+ identities.
+4. **Sentiment Distribution & Complexity**: Sentiment remained consistent, but complexity scores (49.99–52.14) suggested slight variability in readability, with some responses being either too simplistic or overly complex.
 
-- Ethical Alignment: Ethical scores are relatively low (average of 0.10 to 0.14), highlighting the need for greater adherence to ethical standards in responses related to suicidality.
-
-- Inclusivity: Inclusivity scores are uniformly low, suggesting a gap in language adaptation specifically for LGBTQ+ inclusivity. Further tuning of chatbots is essential for better inclusivity.
-
-- Sentiment Distribution and Complexity: The sentiment distribution remains steady across responses, but complexity scores vary slightly (49.99 to 52.14), suggesting slight differences in readability and linguistic sophistication across models.
-
-The evaluation results suggest that while current AI models perform adequately, improvements are needed in ethical alignment and inclusivity to better serve LGBTQ+ individuals in sensitive mental health contexts.
+Overall, the results underscore the need for improvements in ethical language alignment and inclusivity to better support LGBTQ+ individuals in mental health contexts.
 
 ## Installation
 
@@ -75,16 +72,14 @@ The script will output an evaluation report with scores for each metric, saved i
 
 ## Results Interpretation
 
-- ROUGE & METEOR Scores: Higher scores indicate better precision and alignment with human responses.
-
-- Ethical & Inclusivity Scores: Scores close to 1 suggest ethical language and inclusivity. Current low scores signal a need for refinement.
-
-- Complexity: Consistent scores indicate similar readability levels across models.
+1. **ROUGE & METEOR Scores**: Higher values indicate better alignment with human responses, with room for improved textual matching.
+2. **Ethical & Inclusivity Scores**: Scores close to 1 reflect ethical language and inclusivity. Current low scores indicate areas for refinement.
+3. **Complexity**: Consistent scores suggest similar readability across models, with adjustments needed for more balanced responses.
 
 ## Future Work
 
-- Enhanced Inclusivity: Further tuning to improve inclusivity specifically for LGBTQ+ language and cultural sensitivity.
+- **Enhanced Inclusivity**: Further tuning to improve inclusivity specifically for LGBTQ+ language and cultural sensitivity.
 
-- Ethics Integration: Implement ethics-driven prompt engineering to enhance alignment with mental health ethics.
+- **Ethics Integration**: Implement ethics-driven prompt engineering to enhance alignment with mental health ethics.
 
-- Dynamic Sentiment Adjustment: Fine-tune sentiment modulation to adapt responses to specific user needs in real-time.
+- **Dynamic Sentiment Adjustment**: Fine-tune sentiment modulation to adapt responses to specific user needs in real-time.

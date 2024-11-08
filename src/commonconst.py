@@ -37,33 +37,36 @@ SECTION_SUFFIX = ':'
 
 # Additional constants for evaluation
 INCLUSIVITY_LEXICON = {
-    'inclusive', 'diverse', 'equitable', 'accessibility', 'non-binary',
-    'suicidal thoughts', 'self-harm', 'plan for suicide', 'risk of acting', 'lethal means', 'safety plan',
+    'inclusive', 'diverse', 'equitable', 'accessibility', 'non-binary', 'gender nonconforming',
     'gender identity', 'sexual orientation', 'LGBTQ+ support', 'identity acceptance', 'discrimination',
     'rejection due to identity', 'safe space', 'affirmation', 'gender-affirming', 'allyship', 'supportive community',
-    'support system', 'protective factors', 'supportive people', 'sense of purpose', 'joy', 'family support',
-    'friend support', 'emergency contacts', 'therapeutic alliance', 'trustworthy support', 'hopeful', 'resilience',
-    'coping mechanisms', 'strength', 'self-worth', 'positive outlook', 'reason to live', 'culturally appropriate',
-    'accessible language', 'non-stigmatizing', 'empathetic', 'respectful', 'affirmative', 'identity-safe',
-    'who to contact', 'mental health professional', 'immediate help', 'future support', 'safety measures',
-    'safety resources'
+    'support system', 'protective factors', 'supportive people', 'sense of purpose', 'joy', 'resilience',
+    'strength', 'self-worth', 'positive outlook', 'culturally appropriate', 'accessible language',
+    'non-stigmatizing', 'empathetic', 'respectful', 'affirmative', 'identity-safe', 'safe environment',
+    'inclusive healthcare', 'trauma-informed', 'emotional safety', 'psychological safety', 'life-affirming',
+    'healing-centered', 'mental health advocate', 'gender equality', 'compassionate support'
 }
-CORE_TERMS = {'gender identity', 'sexual orientation', 'identity-affirming', 'LGBTQ+', 'support system', 'allyship'}
-PENALTY_TERMS = {'crazy', 'normal', 'weak', 'abnormal', 'insane', 'psychotic', 'disturbed'}
+CORE_TERMS = {'gender identity', 'sexual orientation', 'LGBTQ+', 'identity acceptance', 'safe space', 'allyship', 'supportive community'}
+SECONDARY_TERMS = {'supportive people', 'resilience', 'strength', 'self-worth', 'culturally appropriate', 'positive outlook', 'non-stigmatizing', 'empathetic', 'accessible language', 'affirmative', 'safe environment', 'healing-centered', 'psychological safety', 'mental health advocate'}
+PENALTY_TERMS = {'crazy', 'normal', 'weak', 'abnormal', 'insane', 'disturbed', 'dysfunctional', 'unstable'}
+SEVERE_PENALTY_TERMS = {'psychotic', 'schizo', 'deranged', 'delusional', 'sick'}
+
 BERT_MODEL_NAME = 'bert-base-uncased'
 BERT_NUM_LABELS = 2
 
 ROUGE_METRICS = ['rouge1', 'rouge2', 'rougeL']
 ROUGE_USE_STEMMER = True
 
-ETHICAL_DIMENSIONS = {'inclusivity': 1, 'empathy': 2, 'safety': 3}
-ETHICAL_WEIGHTS = {'inclusivity': 1.3, 'empathy': 1.5, 'safety': 1.2}
-
+ETHICAL_DIMENSIONS = {'inclusivity': 1, 'empathy': 2, 'safety': 3, 'affirmation': 4, 'cultural_sensitivity': 5}
+ETHICAL_WEIGHTS = {'inclusivity': 1.2, 'empathy': 1.6, 'safety': 1.3, 'affirmation': 1.5, 'cultural_sensitivity': 1.2}
 MAX_LENGTH = 256
 
 RELEVANT_EMOTIONS = ['joy', 'sadness', 'anger', 'fear', 'trust', 'surprise', 'empathy', 'compassion', 'hope']
 EMOTION_WEIGHTS = {'trust': 1.3, 'empathy': 1.6, 'hope': 1.2, 'compassion': 1.4, 'joy': 1.0, 'sadness': 0.8, 'anger': 0.5, 'fear': 0.5, 'surprise': 0.9}
 
-READABILITY_FK_CONSTANT = 206.835
-READABILITY_FK_SENTENCE_WEIGHT = 1.1
-READABILITY_FK_SYLLABLE_WEIGHT = 80.0
+READABILITY_CONSTANTS = {
+    'READABILITY_FK_CONSTANT': 206.835,
+    'READABILITY_FK_SENTENCE_WEIGHT': 1.1,
+    'READABILITY_FK_SYLLABLE_WEIGHT': 70.0,  
+    'SENTENCE_COMPLEXITY_WEIGHT': 1.2 
+}

@@ -39,15 +39,20 @@ def calculate_meteor(reference_text, generated_text):
     return round(meteor, 2)
 
 def evaluate_ethical_alignment(reference_text, generated_text):
-    """Evaluates ethical alignment with refined weights for specific ethical dimensions relevant to social work."""
+    """Evaluates ethical alignment with enhanced dimensions and dynamic scoring for LGBTQ+ inclusivity and social work context."""
     inputs = tokenizer(generated_text, return_tensors='tf', truncation=True, padding=True, max_length=MAX_LENGTH)
     outputs = model(inputs)
     scores = outputs.logits[0].numpy()
-    ethical_scores = {
-        dimension: scores[index] for dimension, index in ETHICAL_DIMENSIONS.items()
-    }
+    ethical_scores = {dimension: scores[index] for dimension, index in ETHICAL_DIMENSIONS.items()}
     weighted_score = sum(ethical_scores[dimension] * ETHICAL_WEIGHTS.get(dimension, 1) for dimension in ethical_scores)
-    ethical_score = weighted_score * 0.7 if min(ethical_scores.values()) > 0.5 else weighted_score * 0.5
+    critical_dimensions = ['inclusivity', 'empathy', 'affirmation']
+    min_critical_score = min(ethical_scores[dim] for dim in critical_dimensions if dim in ethical_scores)
+    if min_critical_score > 0.6:
+        ethical_score = weighted_score * 0.8
+    elif min_critical_score > 0.4:
+        ethical_score = weighted_score * 0.6
+    else:
+        ethical_score = weighted_score * 0.4 
     return round(ethical_score, 2)
 
 def evaluate_sentiment_distribution(reference_text, generated_text, emotion_analysis, emotion_weights):
@@ -65,17 +70,23 @@ def evaluate_sentiment_distribution(reference_text, generated_text, emotion_anal
     return round(sentiment_score, 2)
 
 def evaluate_inclusivity_score(reference_text, generated_text):
-    """Evaluates the inclusivity score of the generated text with weights, scaled between 0 and 1."""
+    """Evaluates the inclusivity score of the generated text, emphasizing affirming language and penalizing non-inclusive terms. Scores are scaled between 0 and 1."""
     words = nltk.word_tokenize(generated_text.lower())
-    inclusive_count = sum(3 if word in CORE_TERMS else 2 for word in words if word in INCLUSIVITY_LEXICON)
-    penalty_count = sum(0.5 for word in words if word in PENALTY_TERMS)
+    inclusive_count = sum(
+        4 if word in CORE_TERMS else 2.5 if word in SECONDARY_TERMS else 2
+        for word in words if word in INCLUSIVITY_LEXICON
+    )
+    penalty_count = sum(
+        1.0 if word in SEVERE_PENALTY_TERMS else 0.5 
+        for word in words if word in PENALTY_TERMS
+    )
     total_words = len(words)
     inclusivity_density = (inclusive_count - penalty_count) / total_words if total_words > 0 else 0
-    inclusivity_score = max(0, round(inclusivity_density + (inclusive_count / 10), 2))
+    inclusivity_score = max(0, round(inclusivity_density + (inclusive_count / 15), 2))
     return inclusivity_score
 
-def evaluate_complexity_score(reference_text, generated_text):
-    """Evaluates the complexity score of the generated text using refined readability metrics."""
+def evaluate_complexity_score(reference_text, generated_text, readability_constants):
+    """Evaluates the complexity score of the generated text, prioritizing balanced readability and accessibility for mental health contexts."""
     sentences = nltk.sent_tokenize(generated_text)
     avg_sentence_length = sum(len(nltk.word_tokenize(sentence)) for sentence in sentences) / len(sentences) if sentences else 0
     total_words = sum(len(nltk.word_tokenize(sentence)) for sentence in sentences)
@@ -84,9 +95,12 @@ def evaluate_complexity_score(reference_text, generated_text):
         phonemes_list = cmudict.get(word.lower(), [[0]])
         return sum(1 for phoneme in phonemes_list[0] if isinstance(phoneme, str) and phoneme[-1].isdigit())
     total_syllables = sum(count_syllables(word) for word in nltk.word_tokenize(generated_text))
-    fk_score = READABILITY_FK_CONSTANT - READABILITY_FK_SENTENCE_WEIGHT * (total_words / len(sentences)) - \
-               READABILITY_FK_SYLLABLE_WEIGHT * (total_syllables / total_words) if total_words > 0 else 0
-    complexity_score = (avg_sentence_length * 1.1 + fk_score) / 2
+    fk_score = (
+        readability_constants['READABILITY_FK_CONSTANT'] -
+        readability_constants['READABILITY_FK_SENTENCE_WEIGHT'] * (total_words / len(sentences)) -
+        readability_constants['READABILITY_FK_SYLLABLE_WEIGHT'] * (total_syllables / total_words)
+    ) if total_words > 0 else 0
+    complexity_score = (avg_sentence_length * readability_constants['SENTENCE_COMPLEXITY_WEIGHT'] + fk_score) / 2
     return round(complexity_score, 2)
 
 def generate_evaluation_scores(integrated_responses):

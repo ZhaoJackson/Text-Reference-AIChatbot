@@ -38,3 +38,108 @@ JackAI,Evaluate Access to Means,"Do you have access to anything you could use to
 JackAI,Evaluate Access to Means,Do you feel you can stay safe if you leave here today?
 JackAI,Gauge Immediate Support Needs,What would help you feel safer or more supported right now?
 JackAI,Gauge Immediate Support Needs,"If these thoughts come back after you leave here, do you have a plan for what to do or who to contact?"
+DeepSeek,Immediate Safety and Crisis Intervention,"Right now, do you feel at risk of acting on suicidal thoughts? What makes you feel unsafe?"
+DeepSeek,Immediate Safety and Crisis Intervention,"Do you have access to tools, weapons, or methods that could be used for self-harm?"
+DeepSeek,Immediate Safety and Crisis Intervention,Who is the first person you would reach out to if these thoughts became overwhelming?  
+DeepSeek,Minority Stress and Systemic Oppression,"How has discrimination (e.g., transphobia, homophobia, biphobia) directly contributed to your suicidal feelings?"
+DeepSeek,Minority Stress and Systemic Oppression,"Have you experienced harassment, bullying, or violence due to your identity? How does this still affect you?"
+DeepSeek,Minority Stress and Systemic Oppression,Do you feel societal pressures to hide or suppress your identity to stay safe? 
+DeepSeek,Family Acceptance and Rejection,Has rejection from family members or caregivers worsened your mental health? How?
+DeepSeek,Family Acceptance and Rejection,Do you feel forced to choose between your safety/well-being and being your authentic self around family?
+DeepSeek,Family Acceptance and Rejection,"Are there family members who actively support you? If not, who else provides that role?  "
+DeepSeek,Access to LGBTQ+-Affirming Mental Health Resources,Have you ever avoided therapy or support because of fears of being misunderstood or judged for your identity?
+DeepSeek,Access to LGBTQ+-Affirming Mental Health Resources,Do you currently have access to a mental health professional who specializes in LGBTQ+ issues?
+DeepSeek,Access to LGBTQ+-Affirming Mental Health Resources,"What barriers (financial, geographic, cultural) prevent you from getting affirming care?  "
+DeepSeek,Community Belonging and Isolation,Do you feel isolated from LGBTQ+ peers or spaces? How does this loneliness impact you?
+DeepSeek,Community Belonging and Isolation,Have you ever found hope or resilience through connection with the LGBTQ+ community?
+DeepSeek,Community Belonging and Isolation,"What steps (online groups, local organizations) could help you feel less alone?"
+Mistral AI,Mental Health and Well-being,Have you been feeling overwhelmed or hopeless recently?
+Mistral AI,Mental Health and Well-being,How would you describe your overall mental health in the past few weeks?
+Mistral AI,Mental Health and Well-being,Are there any specific events or situations that have significantly impacted your mental health?
+Mistral AI,Social Support and Community,Do you have a support system within the LGBTQ community?
+Mistral AI,Social Support and Community,"How often do you engage with friends, family, or community groups?"
+Mistral AI,Social Support and Community,Do you feel comfortable discussing your feelings with someone in your support network?
+Mistral AI,Access to Mental Health Services,Have you sought professional help for your mental health concerns?
+Mistral AI,Access to Mental Health Services,Do you have access to LGBTQ-affirming mental health services?
+Mistral AI,Access to Mental Health Services,Are there any barriers preventing you from accessing mental health care?
+Mistral AI,Discrimination and Harassment,Have you experienced discrimination or harassment based on your sexual orientation or gender identity?
+Mistral AI,Discrimination and Harassment,How have these experiences affected your mental health?
+Mistral AI,Discrimination and Harassment,Do you have a safe space where you can discuss these experiences without judgment?
+Mistral AI,Coping Mechanisms and Resilience,What strategies do you use to cope with stress and difficult emotions?
+Mistral AI,Coping Mechanisms and Resilience,Are there any activities or hobbies that help you feel better?
+Mistral AI,Coping Mechanisms and Resilience,Do you have a plan in place for managing suicidal thoughts or feelings of crisis?
+Llama-3,Mental Health and Self-Care,How do you currently take care of your mental health?
+Llama-3,Mental Health and Self-Care,What self-care practices have you found helpful in managing stress and anxiety?
+Llama-3,Mental Health and Self-Care,Are there any mental health resources or support groups you're aware of but haven't accessed yet?
+Llama-3,Social Support and Community,"Do you feel connected to the LGBTQ+ community, and if so, how?"
+Llama-3,Social Support and Community,Are there supportive people in your life who accept and understand your identity?
+Llama-3,Social Support and Community,Have you experienced social isolation or rejection due to your identity?
+Llama-3,Identity and Self-Acceptance,"How do you feel about your LGBTQ+ identity, and have you experienced any internalized stigma?"
+Llama-3,Identity and Self-Acceptance,Have you faced discrimination or harassment due to your identity?
+Llama-3,Identity and Self-Acceptance,How do you practice self-acceptance and self-love?
+Llama-3,Crisis Intervention and Safety Planning,"Have you ever had a crisis plan in place, and if so, what did it entail?"
+Llama-3,Crisis Intervention and Safety Planning,Are you aware of any crisis hotlines or support services?
+Llama-3,Crisis Intervention and Safety Planning,Do you have a trusted person in your life who knows how to support you during a crisis?
+Llama-3,Access to Resources and Services,Are you aware of any LGBTQ+-specific mental health resources or services in your area?
+Llama-3,Access to Resources and Services,Have you faced any barriers in accessing healthcare or mental health services due to your identity?
+Llama-3,Access to Resources and Services,Do you know how to navigate healthcare systems and advocate for yourself?
+Gemini,Internalized Stigma and Minority Stress,How often do you experience feelings of shame or self-hatred related to your sexual orientation or gender identity?
+Gemini,Internalized Stigma and Minority Stress,"Do you feel that society's negative attitudes towards LGBTQ+ people impact your mental health? If so, how?"
+Gemini,Internalized Stigma and Minority Stress,"Have you experienced discrimination or microaggressions related to your identity, and how have these experiences affected you?"
+Gemini,Social Isolation and Rejection,Do you feel supported by your family and friends regarding your sexual orientation or gender identity?
+Gemini,Social Isolation and Rejection,Have you experienced rejection or exclusion from important social groups due to your identity?
+Gemini,Social Isolation and Rejection,How often do you feel alone or isolated?
+Gemini,Access to Mental Health Care and Resources,Do you have access to mental health professionals who are knowledgeable and affirming of LGBTQ+ identities?
+Gemini,Access to Mental Health Care and Resources,"Have you faced barriers in accessing mental health care, such as cost, discrimination, or lack of specialized services?"
+Gemini,Access to Mental Health Care and Resources,Are you aware of LGBTQ+ specific support groups or resources in your community?
+Gemini,Substance Use and Coping Mechanisms,"Do you use substances (alcohol, drugs) to cope with stress, emotional pain, or difficult feelings related to your identity?"
+Gemini,Substance Use and Coping Mechanisms,How often do you engage in self-harming behaviors?
+Gemini,Substance Use and Coping Mechanisms,What other coping mechanisms do you use to manage difficult emotions? Are they healthy and productive?
+Gemini,Gender Dysphoria and Transition-Related Stress,"If you are transgender or gender non-conforming, how much distress do you experience related to your gender identity and assigned sex at birth?"
+Gemini,Gender Dysphoria and Transition-Related Stress,"Have you experienced any delays or barriers in accessing gender-affirming care, such as hormone therapy or surgery?"
+Gemini,Gender Dysphoria and Transition-Related Stress,How does the lack of social acceptance or legal recognition of your gender identity impact your mental health?
+Perplexity AI Chat,Mental Health Struggles,"Have you been feeling overwhelmed, hopeless, or unable to cope with daily life recently?"
+Perplexity AI Chat,Mental Health Struggles,Are there specific events or experiences that have triggered these feelings?
+Perplexity AI Chat,Mental Health Struggles,Do you feel that your mental health struggles are connected to your identity as part of the LGBTQ+ community?
+Perplexity AI Chat,Discrimination and Stigma,"Have you experienced bullying, harassment, or discrimination because of your sexual orientation or gender identity?"
+Perplexity AI Chat,Discrimination and Stigma,How have these experiences affected your self-esteem and mental well-being?
+Perplexity AI Chat,Discrimination and Stigma,"Do you feel safe being yourself in your current environment (e.g., school, workplace, home)?"
+Perplexity AI Chat,Social Isolation,"Do you feel isolated or disconnected from family, friends, or your community?"
+Perplexity AI Chat,Social Isolation,Are there people in your life who understand and accept you for who you are?
+Perplexity AI Chat,Social Isolation,Have you been able to connect with LGBTQ+ support groups or communities?
+Perplexity AI Chat,Coping Mechanisms,"When you're feeling overwhelmed, what do you usually do to cope?"
+Perplexity AI Chat,Coping Mechanisms,"Have you ever turned to unhealthy coping mechanisms (e.g., substance use, self-harm)?"
+Perplexity AI Chat,Coping Mechanisms,Are there activities or practices that make you feel better or more grounded when you're struggling?
+Perplexity AI Chat,Seeking Help and Support,"Have you reached out to a therapist, counselor, or support group for help with what you're going through?"
+Perplexity AI Chat,Seeking Help and Support,"What barriers (e.g., financial, cultural, fear of judgment) prevent you from seeking professional help?"
+Perplexity AI Chat,Seeking Help and Support,"If someone offered support right now, what would be the most helpful thing they could do for you?"
+HuggingChat,Mental Health and Well-being,"Have you experienced any mental health issues such as depression, anxiety, or trauma that may be contributing to your suicidal thoughts?"
+HuggingChat,Mental Health and Well-being,How do you currently cope with stress and difficult emotions?
+HuggingChat,Mental Health and Well-being,"Are you currently seeing a therapist or counselor, and if so, how often?"
+HuggingChat,Social Support and Isolation,"Do you feel like you have a strong support system of friends, family, or community members who accept and support your LGBTQ identity?"
+HuggingChat,Social Support and Isolation,"Have you experienced rejection or discrimination from family, friends, or community members due to your LGBTQ identity?"
+HuggingChat,Social Support and Isolation,"Are you feeling isolated or disconnected from others, and if so, how do you think this is affecting your mental health?"
+HuggingChat,Identity and Self-Acceptance,"How do you feel about your LGBTQ identity, and have you experienced any internalized shame or self-doubt?"
+HuggingChat,Identity and Self-Acceptance,"Have you faced bullying, harassment, or violence due to your LGBTQ identity, and if so, how have you coped with the trauma?"
+HuggingChat,Identity and Self-Acceptance,Are there any cultural or religious beliefs that may be contributing to your feelings of shame or self-doubt about your LGBTQ identity?
+HuggingChat,Substance Use and Coping Mechanisms,"Do you use substances such as drugs or alcohol to cope with difficult emotions or stress, and if so, how often?"
+HuggingChat,Substance Use and Coping Mechanisms,"Have you experienced any negative consequences as a result of substance use, such as relationship problems or health issues?"
+HuggingChat,Substance Use and Coping Mechanisms,"Are there any other coping mechanisms you use to deal with difficult emotions, such as exercise, creative activities, or mindfulness practices?"
+HuggingChat,Crisis Intervention and Safety Planning,"Have you had any previous suicidal crises or attempts, and if so, what triggered them?"
+HuggingChat,Crisis Intervention and Safety Planning,"Do you have a safety plan in place in case you experience suicidal thoughts or feelings, and if so, what does it entail?"
+HuggingChat,Crisis Intervention and Safety Planning,"Are there any emergency resources or hotlines that you are aware of and would feel comfortable reaching out to in a crisis, such as the Trevor Project or the National Suicide Prevention Lifeline?"
+Gender Journey Chatbot Rubies,Mental Health Support,Have you noticed any changes in your mood or energy levels recently?
+Gender Journey Chatbot Rubies,Mental Health Support,Are you feeling isolated or disconnected from your friends and family?
+Gender Journey Chatbot Rubies,Mental Health Support,What coping strategies have you used in the past to deal with stress or anxiety?
+Gender Journey Chatbot Rubies,Acceptance and Identity,How comfortable do you feel expressing your true self with those around you?
+Gender Journey Chatbot Rubies,Acceptance and Identity,Are there specific challenges you face related to your identity that you’d like to discuss?
+Gender Journey Chatbot Rubies,Acceptance and Identity,What does being your authentic self mean to you?
+Gender Journey Chatbot Rubies,Community Connection,Are you involved in any LGBTQ+ support groups or organizations?
+Gender Journey Chatbot Rubies,Community Connection,How do you feel about the support you receive from your local community?
+Gender Journey Chatbot Rubies,Community Connection,Have you found any online resources or communities that resonate with you?
+Gender Journey Chatbot Rubies,Family Dynamics,How does your family react to your identity or orientation?
+Gender Journey Chatbot Rubies,Family Dynamics,Have you had conversations with your family about your experiences?
+Gender Journey Chatbot Rubies,Family Dynamics,What support do you wish your family could provide?
+Gender Journey Chatbot Rubies,Crisis Resources,Are you aware of local resources or hotlines available for immediate support?
+Gender Journey Chatbot Rubies,Crisis Resources,Do you know how to reach out for help in a crisis situation?
+Gender Journey Chatbot Rubies,Crisis Resources,What would help you feel more prepared to seek help if needed?

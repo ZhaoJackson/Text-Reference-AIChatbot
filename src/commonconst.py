@@ -7,6 +7,9 @@ from nltk.translate.meteor_score import meteor_score
 from rouge_score import rouge_scorer
 from transformers import BertTokenizer, TFBertForSequenceClassification
 import tensorflow as tf
+import os
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Original file paths
 REFERENCE_DOCX_PATH = 'src/data/Test Reference Text.docx'
@@ -20,6 +23,9 @@ INTEGRATED_OUTPUT_CSV_PATH = 'src/outputs/integrated_chatbot_responses.csv'
 CHATBOT_PROCESSED_CSV_PATH = 'src/outputs/processed_chatbot_text.csv'
 REFERENCE_PROCESSED_CSV_PATH = 'src/outputs/processed_reference_text.csv'
 
+# Outputs for visualization
+PLOTS_DIR = 'src/outputs/Plots'
+
 # Field names for CSV
 FIELDNAMES = ["Platform", "Topics", "Response"]
 
@@ -28,6 +34,16 @@ EVALUATION_FIELDNAMES = [
     'Chatbot', 'Response', 'Average ROUGE Score', 'METEOR Score',
     'Ethical Alignment Score', 'Sentiment Distribution Score',
     'Inclusivity Score', 'Complexity Score'
+]
+
+# Metrics used in visualizations
+VISUALIZATION_METRICS = [
+    'Average ROUGE Score',
+    'METEOR Score',
+    'Ethical Alignment Score',
+    'Inclusivity Score',
+    'Sentiment Distribution Score',
+    'Complexity Score'
 ]
 
 # Other constants

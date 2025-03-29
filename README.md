@@ -42,16 +42,43 @@ Text-Reference-AIChatbot/
 3. **Execution Flow**:
 - The `main.py` script orchestrates data processing, metric evaluation using evaluation_algo.py, and result aggregation in `evaluation_scores.csv` for comparative analysis.
 
+---
+## Chatbots Evaluated
+
+### 📌 General-Purpose LLMs:
+- **ChatGPT-4**
+- **Claude (Anthropic)**
+- **Gemini (Google)**
+- **LLaMA-3 (Meta)**
+- **DeepSeek**
+- **Mistral**
+- **Perplexity AI**
+- **HuggingChat**
+
+### 🏳️‍🌈 LGBTQ+-Specific Chatbots:
+- **JackAI**
+- **Gender Journey Chatbot Rubies**
+
+These platforms were selected for their relevance in AI ethics, mental health, and LGBTQ+ inclusivity—ensuring both high-tech LLMs and community-centric tools are evaluated under equal standards.
+
+---
+
 ## Results Summary
-### Key Findings
 
-Evaluating multiple chatbots (e.g., ChatGPT-4, Claude, JackAI) revealed the following:
-1. **Precision**: ROUGE and METEOR scores averaged between 0.31–0.34 and 0.27–0.36, respectively, indicating moderate alignment with reference texts.
-2. **Ethical Alignment**: Ethical scores averaged 0.10–0.14, signaling a need for enhanced adherence to mental health ethics in AI responses.
-3. **Inclusivity**: Low inclusivity scores highlighted significant room for improvement in language that is sensitive and supportive toward LGBTQ+ identities.
-4. **Sentiment Distribution & Complexity**: Sentiment remained consistent, but complexity scores (49.99–52.14) suggested slight variability in readability, with some responses being either too simplistic or overly complex.
+### Key Findings:
+1. **Precision (ROUGE/METEOR)**  
+   Scores ranged from 0.31–0.36 (ROUGE) and 0.27–0.36 (METEOR), indicating moderate textual alignment.
 
-Overall, the results underscore the need for improvements in ethical language alignment and inclusivity to better support LGBTQ+ individuals in mental health contexts.
+2. **Ethical Alignment**  
+   Scores between 0.10–0.14 across platforms suggest that while LLMs can maintain safety, they often lack ethical depth in high-risk mental health scenarios.
+
+3. **Inclusivity**  
+   Most responses scored lower in LGBTQ+ affirming language. Dedicated bots like DeepSeek and Gender Journey performed better, but even general models showed gaps.
+
+4. **Sentiment & Complexity**  
+   Sentiment tone was mostly supportive but occasionally neutral or clinical. Complexity scores ranged from 49.99–52.14, reflecting variability in readability across platforms.
+
+---
 
 ## Installation
 

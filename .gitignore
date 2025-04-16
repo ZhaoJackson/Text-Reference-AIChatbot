@@ -1,0 +1,6 @@
+# Ignore all DOCX files under data/
+src/data/*.docx
+
+# Ignore selected CSV files under output/
+src/output/processed_*.csv
+src/output/integrated_chatbot_responses.csv

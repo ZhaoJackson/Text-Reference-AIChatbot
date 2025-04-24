@@ -19,11 +19,12 @@ Text-Reference-AIChatbot/
 |   |   ├── Test Chatbot text.docx
 |   ├── utils/
 |   |   ├── evaluation_algo.py
-|   ├── output/
+|   ├── outputs/
 |   |   ├── processed_chatbot_text.csv
 |   |   ├── processed_reference_text.csv
 |   |   ├── evaluation_scores.csv
 |   |   ├── integrated_chatbot_responses.csv
+|   |   ├──Plots/
 |   └── commonconst.py
 └── README.md
 ```

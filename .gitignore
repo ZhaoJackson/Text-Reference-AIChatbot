@@ -2,5 +2,7 @@
 src/data/*.docx
 
 # Ignore selected CSV files under output/
-src/outputs/processed_*.csv
-src/outputs/integrated_chatbot_responses.csv
+src/outputs/*.csv
+src/outputs/*.png
+
+requirements.txt

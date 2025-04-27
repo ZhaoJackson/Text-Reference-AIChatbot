@@ -5,4 +5,10 @@ src/data/*.docx
 src/outputs/*.csv
 src/outputs/*.png
 
-requirements.txt
+# Ignore everything under Plots (inside outputs)
+src/outputs/Plots/
+
+# Optionally: Ignore compiled Python files and system files
+__pycache__/
+*.pyc
+.DS_Store

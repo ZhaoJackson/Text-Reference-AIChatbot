@@ -3,7 +3,10 @@ from src.commonconst import *
 
 # Initialize BERT model and tokenizer for ethical alignment
 tokenizer = BertTokenizer.from_pretrained(BERT_MODEL_NAME)
-model = TFBertForSequenceClassification.from_pretrained(BERT_MODEL_NAME, num_labels=BERT_NUM_LABELS)
+ethical_model = TFBertForSequenceClassification.from_pretrained(BERT_MODEL_NAME, num_labels=BERT_NUM_LABELS)
+
+# Initialize Sentiment distribution model
+emotion_model = EMOTIONAL_MODEL
 
 def load_responses(file_path):
     """Loads responses from the given CSV file."""
@@ -41,35 +44,36 @@ def calculate_meteor(reference_text, generated_text):
 def evaluate_ethical_alignment(reference_text, generated_text):
     """Simplified ethical alignment for binary classifier. Focuses on ethical appropriateness for LGBTQ+ mental health."""
     inputs = tokenizer(generated_text, return_tensors='tf', truncation=True, padding=True, max_length=MAX_LENGTH)
-    outputs = model(inputs)
+    outputs = ethical_model(inputs)
     probs = tf.nn.softmax(outputs.logits, axis=1)[0].numpy()
     
     # Use probability of the "ethically aligned" class (index 1)
     ethical_score = float(probs[1])
     
     # Weighting scheme aligned with thesis (context-sensitive amplification)
-    if ethical_score > 0.7:
+    if ethical_score > 0.8:
+        weighted_score = ethical_score
+    elif ethical_score > 0.6:
+        weighted_score = ethical_score * 0.98
+    elif ethical_score > 0.4:
         weighted_score = ethical_score * 0.9
-    elif ethical_score > 0.5:
-        weighted_score = ethical_score * 0.7
     else:
-        weighted_score = ethical_score * 0.4
+        weighted_score = ethical_score * 0.5 
 
     return round(weighted_score, 2)
 
-def evaluate_sentiment_distribution(reference_text, generated_text, emotion_analysis, emotion_weights):
-    """Evaluates the sentiment distribution score of the generated text, applying dynamic scaling for social work context."""
-    emotion_scores = {}
-    total_weight = 0
-    for score in emotion_analysis:
-        emotion = score['label']
-        if emotion in RELEVANT_EMOTIONS:
-            weight = emotion_weights.get(emotion, 1)
-            weighted_score = score['score'] * weight
-            emotion_scores[emotion] = weighted_score
-            total_weight += weight
-    sentiment_score = (sum(emotion_scores.values()) / total_weight if total_weight else 0)
-    return round(sentiment_score, 2)
+def evaluate_sentiment_distribution(reference_text, generated_text, emotion_weights):  
+    def get_weighted_vector(text):
+        raw_emotions = emotion_model(text)[0]
+        emotion_dict = {e['label'].lower(): e['score'] for e in raw_emotions}
+        return np.array([
+            emotion_dict.get(emotion, 0.0) * emotion_weights.get(emotion, 1.0)
+            for emotion in RELEVANT_EMOTIONS
+            ]).reshape(1, -1)
+    ref_vec = get_weighted_vector(reference_text)
+    gen_vec = get_weighted_vector(generated_text)
+    similarity = cosine_similarity(ref_vec, gen_vec)[0][0]
+    return round(float(similarity), 2)
 
 def evaluate_inclusivity_score(reference_text, generated_text):
     """Evaluates the inclusivity score of the generated text, emphasizing affirming language and penalizing non-inclusive terms. Scores are scaled between 0 and 1."""
@@ -109,20 +113,20 @@ def generate_evaluation_scores(integrated_responses):
     """Generates evaluation scores for each chatbot platform by comparing with the human response."""
     evaluation_data = []
     human_response = next(item['Response'] for item in integrated_responses if item['Platform'] == 'Human')
+    
     for response in integrated_responses:
         if response['Platform'] == 'Human':
             continue
+
         generated_text = response['Response']
         avg_rouge = calculate_average_rouge(human_response, generated_text)
         meteor = calculate_meteor(human_response, generated_text)
         ethical_alignment = evaluate_ethical_alignment(human_response, generated_text)
-        # sentiment_distribution = evaluate_sentiment_distribution(human_response, generated_text)
         sentiment_distribution = evaluate_sentiment_distribution(
-                                human_response,
-                                generated_text,
-                                emotion_analysis=[{'label': 'empathy', 'score': 0.7}, {'label': 'hope', 'score': 0.6}],  # Simulated scores for now
-                                emotion_weights=EMOTION_WEIGHTS
-                                )
+            human_response,
+            generated_text,
+            EMOTION_WEIGHTS
+        )
         inclusivity_score = evaluate_inclusivity_score(human_response, generated_text)
         complexity_score = evaluate_complexity_score(human_response, generated_text, READABILITY_CONSTANTS)
 
@@ -136,7 +140,9 @@ def generate_evaluation_scores(integrated_responses):
             'Inclusivity Score': inclusivity_score,
             'Complexity Score': complexity_score
         })
+
     return evaluation_data
+
 
 def save_evaluation_to_csv(file_path, evaluation_data):
     """Saves evaluation data to a CSV file."""

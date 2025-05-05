@@ -114,4 +114,9 @@ These platforms were selected for their relevance in AI ethics, mental health, a
 
 --- 
 
-For contributions or collaborations, contact **Jackson Zhao** (zz3119@columbia.edu), **Elwin Wu** (elwin.wu@columbia.edu), **Charles Lea** (chl2159@columbia.edu) at **Columbia School of Social Work**
+## License and Attribution
+This work was developed as part of a research assistantship at **Columbia University School of Social Work**, with support from faculty mentors **Prof. Elwin Wu** (elwin.wu@columbia.edu) and **Prof. Charles Lea** (chl2159@columbia.edu)
+Lead Author: **Zichen Zhao** (zichen.zhao@columbia.edu)
+Licensed under a custom academic non-commercial license, retaining intellectual property within Columbia-affiliated projects
+
+---

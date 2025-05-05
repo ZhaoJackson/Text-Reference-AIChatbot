@@ -1,4 +1,4 @@
-# Evaluating Ethical Alignment and Emotional Intelligence in LLM-Based Mental Health Chatbots: A Machine-Centric Benchmark for Suicide Prevention in LGBTQ+ Contexts
+# Evaluating Ethical Alignment and Emotional Intelligence in LLM-Based Mental Health Chatbots: A Machine-Centric Benchmark for Social Work Suicide Prevention
 
 ## Overview
 - This project examines the effectiveness of AI chatbots in responding to high-stakes mental health topics, focusing on suicidality within LGBTQ+ communities. By comparing AI-generated responses to expert-crafted human references, this study assesses the AI’s alignment with human standards on precision, ethical alignment, inclusivity, and complexity. The goal is to ensure that chatbots provide supportive, unbiased, and ethically sound assistance, particularly in sensitive mental health contexts.

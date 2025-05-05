@@ -18,7 +18,7 @@ def plot_bar_chart(df, metric):
     plt.ylabel(metric)
     plt.xticks(rotation=45)
     plt.tight_layout()
-    filename = os.path.join(PLOTS_DIR, f'bar_{metric.replace(" ", "_").lower()}.png')
+    filename = os.path.join(PLOTS_DIR, f'{metric.replace(" ", "_").lower()}.png')
     plt.savefig(filename)
     plt.close()
 
@@ -31,6 +31,4 @@ def generate_all_bar_charts(df):
 def generate_plots():
     """Primary function called from main.py to trigger plot generation."""
     ensure_plot_dir()
-    df = load_evaluation_scores()
-    generate_all_bar_charts(df)
-    print("✅ All visualizations saved in 'src/outputs/Plots/'")
+    generate_all_bar_charts(load_evaluation_scores())

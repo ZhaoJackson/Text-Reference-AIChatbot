@@ -1,5 +1,5 @@
 from src.commonconst import *
-from src.data.data import *
+from src.data.data_processing import *
 from src.utils.evaluation_algo import *
 from src.outputs.output_processing import *
 
@@ -27,11 +27,11 @@ def main():
     # Step 5: Generate evaluation scores by comparing each chatbot to the human reference
     evaluation_scores = generate_evaluation_scores(integrated_responses)
     save_evaluation_to_csv(OUTPUT_CSV_PATH, evaluation_scores)
-
     print("Data processing and evaluation complete. Results saved in the src/outputs folder.")
 
     # step 6: Generate Visualization Plots
     generate_plots()
+    print("All visualizations saved in 'src/outputs/Plots/'")
 
 if __name__ == "__main__":
     main()

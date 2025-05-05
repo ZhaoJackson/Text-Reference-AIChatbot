@@ -1,9 +1,7 @@
 from src.commonconst import *
-import csv
-import pandas as pd
 
 def extract_text_from_docx(doc_path):
-    """Extracts text from a .docx file."""
+    """Extracts text from a .docx file and filters out empty paragraphs."""
     doc = docx.Document(doc_path)
     text = [paragraph.text for paragraph in doc.paragraphs if paragraph.text.strip() != ""]
     return text
@@ -12,14 +10,14 @@ def process_reference_text(reference_text):
     """Processes the reference text into a structured format for CSV output."""
     data = []
     current_section = None
-    for line in reference_text:
-        if line.endswith(SECTION_SUFFIX):
+    for line in reference_text: # scan each line in the reference text
+        if line.endswith(SECTION_SUFFIX): # detects section headers 
             current_section = line[:-1].strip()
         else:
             data.append({
                 "Platform": HUMAN_PLATFORM,
                 "Topics": current_section,
-                "Response": line
+                "Response": line # stores each response under its corresponding topic section and platform and format as this one
             })
     return data
 
@@ -29,10 +27,10 @@ def process_chatbot_responses(chatbot_text):
     current_chatbot = None
     current_section = None
     for line in chatbot_text:
-        if RESPONSE_PREFIX in line:
+        if RESPONSE_PREFIX in line: # detects chatbot names
             current_chatbot = line.split(RESPONSE_PREFIX)[-1].strip()
-        elif line.endswith(SECTION_SUFFIX):
-            current_section = line[:-1].strip()
+        elif line.endswith(SECTION_SUFFIX): # track both chatbot names and topic sections
+            current_section = line[:-1].strip() # store each chatbot-generated sentence under its corresponding topic section
         else:
             data.append({
                 "Platform": current_chatbot,

@@ -1,4 +1,4 @@
-# Enhancing Equity and Actionability in Artificial Intelligence (AI) and Large Language Model (LLM) Chatbots: Machine-Driven Benchmarking for Suicide Prevention Among LGBTQ+ Populations
+# Evaluating Ethical Alignment and Emotional Intelligence in LLM-Based Mental Health Chatbots: A Machine-Centric Benchmark for Suicide Prevention in LGBTQ+ Contexts
 
 ## Overview
 - This project examines the effectiveness of AI chatbots in responding to high-stakes mental health topics, focusing on suicidality within LGBTQ+ communities. By comparing AI-generated responses to expert-crafted human references, this study assesses the AI’s alignment with human standards on precision, ethical alignment, inclusivity, and complexity. The goal is to ensure that chatbots provide supportive, unbiased, and ethically sound assistance, particularly in sensitive mental health contexts.
@@ -12,6 +12,7 @@ With mental health chatbots increasingly being used in healthcare, it is vital t
 Text-Reference-AIChatbot/
 ├── main.py
 ├── requirements.txt
+├── .gitignore
 ├── src/
 |   ├── data/
 |   |   ├── data_processing.py
@@ -57,7 +58,7 @@ Each evaluation function returns a numerical score which is logged and compared 
 ---
 ## Chatbots Evaluated
 
-### 📌 General-Purpose LLMs:
+### General-Purpose LLMs:
 - **ChatGPT-4**
 - **Claude (Anthropic)**
 - **Gemini (Google)**
@@ -67,7 +68,7 @@ Each evaluation function returns a numerical score which is logged and compared 
 - **Perplexity AI**
 - **HuggingChat**
 
-### 🏳️‍🌈 LGBTQ+-Specific Chatbots:
+### LGBTQ+-Specific Chatbots:
 - **JackAI**
 - **Gender Journey Chatbot Rubies**
 
@@ -88,25 +89,6 @@ These platforms were selected for their relevance in AI ethics, mental health, a
 - DeepSeek and Gemini lead in inclusivity and sentiment tone.
 - ChatGPT-4 and Claude maintain structured inquiry but need ethical fine-tuning.
 - Gender Journey performs well on empathy but lags in linguistic richness.
-
----
-
-## Installation
-
-1. Clone the repository:
-```
-git clone https://github.com/your-repository
-cd your-repository
-```
-
-2.	Install dependencies:
-```
-pip install -r requirements.txt
-```
-
-3.	Ensure Python 3.9 or above is installed.
-
-The script will output an evaluation report with scores for each metric, saved in evaluation_scores.csv.
 
 ---
 

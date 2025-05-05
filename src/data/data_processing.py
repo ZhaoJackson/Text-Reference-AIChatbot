@@ -72,7 +72,3 @@ def save_processed_files(chatbot_text, reference_text, chatbot_output_path, refe
     # Combine chatbot and reference text into one dataframe
     integrated_df = pd.concat([chatbot_aggregated, reference_aggregated], ignore_index=True)
     integrated_df.to_csv(integrated_output_path, index=False)
-    
-    print(f"Processed chatbot responses saved to {chatbot_output_path}")
-    print(f"Processed reference text saved to {reference_output_path}")
-    print(f"Integrated responses saved to {integrated_output_path}")

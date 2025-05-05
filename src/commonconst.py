@@ -62,8 +62,10 @@ HUMAN_PLATFORM = "Human"
 RESPONSE_PREFIX = "Response from"
 SECTION_SUFFIX = ':'
 
+# ==================================
 # MODEL CONFIGURATIONS
 # ==================================
+
 # Ethical Alignment Model
 BERT_MODEL_NAME = 'bert-base-uncased'
 BERT_NUM_LABELS = 2

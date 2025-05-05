@@ -1,4 +1,5 @@
-# Evaluating Ethical Alignment and Emotional Intelligence in LLM-Based Mental Health Chatbots: A Machine-Centric Benchmark for Social Work Suicide Prevention
+# Evaluating Ethical Alignment and Emotional Intelligence in LLM-Based Mental Health Chatbots
+**A Machine-Centric Benchmark for Social Work Suicide Prevention**
 
 ## Overview
 - This project examines the effectiveness of AI chatbots in responding to high-stakes mental health topics, focusing on suicidality within LGBTQ+ communities. By comparing AI-generated responses to expert-crafted human references, this study assesses the AI’s alignment with human standards on precision, ethical alignment, inclusivity, and complexity. The goal is to ensure that chatbots provide supportive, unbiased, and ethically sound assistance, particularly in sensitive mental health contexts.
@@ -114,9 +115,12 @@ These platforms were selected for their relevance in AI ethics, mental health, a
 
 --- 
 
-## License and Attribution
-This work was developed as part of a research assistantship at **Columbia University School of Social Work**, with support from faculty mentors **Prof. Elwin Wu** (elwin.wu@columbia.edu) and **Prof. Charles Lea** (chl2159@columbia.edu)
-Lead Author: **Zichen Zhao** (zichen.zhao@columbia.edu)
-Licensed under a custom academic non-commercial license, retaining intellectual property within Columbia-affiliated projects
+## License & Attribution
 
+This work was developed as part of a research assistantship at:
+
+- **Columbia University School of Social Work**, with support from faculty mentors **Prof. Elwin Wu** (elwin.wu@columbia.edu) and **Prof. Charles Lea** (chl2159@columbia.edu)
+- **Lead Author**: **Zichen Zhao** (zichen.zhao@columbia.edu)
+- Licensed under a custom academic non-commercial license, retaining intellectual property within Columbia-affiliated projects
+See [`LICENSE`](LICENSE) for full terms
 ---

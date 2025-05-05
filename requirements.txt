@@ -1,3 +1,8 @@
+# Copyright (c) 2025 Zichen Zhao
+# Columbia University School of Social Work
+# Licensed under the MIT Academic Research License
+# See LICENSE file in the project root for details.
+
 absl-py==2.1.0
 aiofiles==23.2.1
 aiohappyeyeballs==2.4.0

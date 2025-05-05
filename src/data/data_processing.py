@@ -1,4 +1,8 @@
-# data_processing.py
+# Copyright (c) 2025 Zichen Zhao
+# Columbia University School of Social Work
+# Licensed under the MIT Academic Research License
+# See LICENSE file in the project root for details.
+
 from src.commonconst import *
 
 def extract_text_from_docx(doc_path):

@@ -1,4 +1,7 @@
-# commonconst.py
+# Copyright (c) 2025 Zichen Zhao
+# Columbia University School of Social Work
+# Licensed under the MIT Academic Research License
+# See LICENSE file in the project root for details.
 
 # =================================
 # LIBRARY IMPORTS

@@ -1,4 +1,8 @@
-# utils.py
+# Copyright (c) 2025 Zichen Zhao
+# Columbia University School of Social Work
+# Licensed under the MIT Academic Research License
+# See LICENSE file in the project root for details.
+
 from src.commonconst import *
 
 # Initialize BERT model and tokenizer for ethical alignment

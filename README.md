@@ -14,7 +14,7 @@ Text-Reference-AIChatbot/
 ├── requirements.txt
 ├── src/
 |   ├── data/
-|   |   ├── data.py
+|   |   ├── data_processing.py
 |   |   ├── Test Reference Text.docx
 |   |   ├── Test Chatbot text.docx
 |   ├── utils/
@@ -30,18 +30,29 @@ Text-Reference-AIChatbot/
 ```
 
 ## Methodology
-1. **Data Preprocessing**:
-- The `data.py` script standardizes chatbot and human response data formats to facilitate accurate metric comparisons.
 
-2. **Evaluation Metrics**:
-- Precision (ROUGE, METEOR): Measures textual similarity between chatbot responses and human references.
-- Ethical Alignment: Assesses the ethical language and appropriateness of chatbot responses in sensitive contexts.
-- Inclusivity Score: Evaluates language for inclusivity, especially relating to LGBTQ+ identity and related nuances.
-- Sentiment Distribution: Analyzes response tone to ensure it is appropriate for mental health support.
-- Complexity Score: Provides insights into the linguistic sophistication and readability of responses, ensuring clarity without compromising sensitivity.
+### 1. Data Preprocessing
+- **`data_processing.py`**: Extracts structured data from `.docx` files and converts chatbot/human responses into clean CSV format for analysis.
 
-3. **Execution Flow**:
-- The `main.py` script orchestrates data processing, metric evaluation using evaluation_algo.py, and result aggregation in `evaluation_scores.csv` for comparative analysis.
+### 2. Evaluation Metrics (in `evaluation_algo.py`)
+Each chatbot response is scored based on the following:
+
+| Metric                     | Output Range | Function | Purpose |
+|---------------------------|--------------|----------|---------|
+| **ROUGE Score**           | 0–1          | `calculate_average_rouge()` | Measures lexical overlap (precision + recall) between chatbot and human responses. |
+| **METEOR Score**          | 0–1          | `calculate_meteor()`        | Accounts for synonyms and stemming; balances exact matches with semantic similarity. |
+| **Ethical Alignment**     | 0–1          | `evaluate_ethical_alignment()` | Uses a fine-tuned BERT model to score how ethically appropriate the response is. Applies weighted scaling for moderate confidence cases. |
+| **Sentiment Distribution**| 0–1          | `evaluate_sentiment_distribution()` | Compares emotion vectors of chatbot vs. reference using cosine similarity, weighted by therapeutic importance. |
+| **Inclusivity Score**     | 0–1          | `evaluate_inclusivity_score()` | Rewards use of affirming, LGBTQ+-inclusive language and penalizes harmful terms. |
+| **Complexity Score**      | ~40–70       | `evaluate_complexity_score()` | Combines average sentence length with Flesch-Kincaid readability to assess clarity and depth. |
+
+## Execution Flow
+Run `main.py` to:
+- Preprocess data
+- Apply each metric function
+- Save scores to `evaluation_scores.csv`
+
+Each evaluation function returns a numerical score which is logged and compared across chatbots.
 
 ---
 ## Chatbots Evaluated
@@ -66,18 +77,17 @@ These platforms were selected for their relevance in AI ethics, mental health, a
 
 ## Results Summary
 
-### Key Findings:
-1. **Precision (ROUGE/METEOR)**  
-   Scores ranged from 0.31–0.36 (ROUGE) and 0.27–0.36 (METEOR), indicating moderate textual alignment.
+### Key Metric Ranges:
+- **ROUGE / METEOR**: 0.20–0.36 → Moderate text similarity to reference.
+- **Ethical Alignment**: 0.19–0.38 → Indicates general caution but varied empathy.
+- **Inclusivity**: 0.00–0.42 → Gaps in affirming language, even in well-performing LLMs.
+- **Sentiment Distribution**: 0.04–1.00 → Shows diverse emotional intelligence levels.
+- **Complexity**: ~49–61 → Balanced readability with emotional nuance.
 
-2. **Ethical Alignment**  
-   Scores between 0.10–0.14 across platforms suggest that while LLMs can maintain safety, they often lack ethical depth in high-risk mental health scenarios.
-
-3. **Inclusivity**  
-   Most responses scored lower in LGBTQ+ affirming language. Dedicated bots like DeepSeek and Gender Journey performed better, but even general models showed gaps.
-
-4. **Sentiment & Complexity**  
-   Sentiment tone was mostly supportive but occasionally neutral or clinical. Complexity scores ranged from 49.99–52.14, reflecting variability in readability across platforms.
+### Observations:
+- DeepSeek and Gemini lead in inclusivity and sentiment tone.
+- ChatGPT-4 and Claude maintain structured inquiry but need ethical fine-tuning.
+- Gender Journey performs well on empathy but lags in linguistic richness.
 
 ---
 
@@ -98,11 +108,19 @@ pip install -r requirements.txt
 
 The script will output an evaluation report with scores for each metric, saved in evaluation_scores.csv.
 
+---
+
 ## Results Interpretation
 
-1. **ROUGE & METEOR Scores**: Higher values indicate better alignment with human responses, with room for improved textual matching.
-2. **Ethical & Inclusivity Scores**: Scores close to 1 reflect ethical language and inclusivity. Current low scores indicate areas for refinement.
-3. **Complexity**: Consistent scores suggest similar readability across models, with adjustments needed for more balanced responses.
+| Metric | Insight |
+|--------|---------|
+| **ROUGE / METEOR** | High = better alignment with human phrasing. |
+| **Ethical Alignment** | High = more safety-conscious, affirming language. |
+| **Inclusivity** | High = uses LGBTQ+-affirming terms, avoids harm. |
+| **Sentiment** | High = tone matches supportive reference. |
+| **Complexity** | Mid-range ideal; too low = vague, too high = overly complex. |
+
+---
 
 ## Future Work
 
@@ -111,3 +129,7 @@ The script will output an evaluation report with scores for each metric, saved i
 - **Ethics Integration**: Implement ethics-driven prompt engineering to enhance alignment with mental health ethics.
 
 - **Dynamic Sentiment Adjustment**: Fine-tune sentiment modulation to adapt responses to specific user needs in real-time.
+
+--- 
+
+For contributions or collaborations, contact **Jackson Zhao** (zz3119@columbia.edu), **Elwin Wu** (elwin.wu@columbia.edu), **Charles Lea** (chl2159@columbia.edu) at **Columbia School of Social Work**

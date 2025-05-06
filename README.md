@@ -9,7 +9,7 @@
 With mental health chatbots increasingly being used in healthcare, it is vital that they respond with sensitivity, particularly toward vulnerable populations like LGBTQ+ individuals. This project evaluates AI responses in critical mental health scenarios to identify areas where AI responsiveness and empathy can improve. This evaluation highlights gaps in chatbot response quality to foster advancements in AI support for LGBTQ+ mental health.
 
 ## Evaluation Pipeline Flowchart
-![Evaluation Flowchart](./Research Paper Flow Chart.drawio.png)
+![Evaluation Flowchart](assets/flowchart.png)
 
 ## Structure
 ```

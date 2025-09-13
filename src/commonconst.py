@@ -12,12 +12,11 @@ import docx
 import nltk
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 import matplotlib.pyplot as plt
 import seaborn as sns
 from nltk.translate.meteor_score import meteor_score
 from rouge_score import rouge_scorer
-from transformers import BertTokenizer, TFBertForSequenceClassification, pipeline
+from transformers import pipeline
 from sklearn.metrics.pairwise import cosine_similarity
 
 # ==================================
@@ -69,9 +68,8 @@ SECTION_SUFFIX = ':'
 # MODEL CONFIGURATIONS
 # ==================================
 
-# Ethical Alignment Model
-BERT_MODEL_NAME = 'bert-base-uncased'
-BERT_NUM_LABELS = 2
+# Ethical Alignment Model - Now using rule-based scoring
+# (Removed BERT dependencies)
 
 # Sentiment Distribution Model
 EMOTIONAL_MODEL = pipeline("text-classification", model="j-hartmann/emotion-english-distilroberta-base", top_k=None)
@@ -81,7 +79,7 @@ ROUGE_METRICS = ['rouge1', 'rouge2', 'rougeL']
 ROUGE_USE_STEMMER = True
 
 # ETHICAL SCORING CONSTANTS
-MAX_LENGTH = None
+RANDOM_SEED = 42  # Fixed seed for deterministic behavior
 
 # Sentiment Distribution Calculation
 RELEVANT_EMOTIONS = [
@@ -132,4 +130,69 @@ READABILITY_CONSTANTS = {
     'READABILITY_FK_SENTENCE_WEIGHT': 1.1,
     'READABILITY_FK_SYLLABLE_WEIGHT': 70.0,
     'SENTENCE_COMPLEXITY_WEIGHT': 1.2
+}
+
+# ETHICAL ALIGNMENT SCORING TERMS
+# High-value LGBTQ+ and social work specific terms (premium scoring)
+LGBTQ_AFFIRMING_TERMS = {
+    'sexual orientation', 'gender identity', 'lgbtq', 'transgender', 'non-binary',
+    'gender nonconforming', 'coming out', 'transition', 'affirming', 'identity acceptance',
+    'discrimination', 'microaggressions', 'minority stress', 'internalized', 'authentic self',
+    'chosen family', 'community', 'belonging', 'pride', 'visibility'
+}
+
+# Social work professional terms (high value)
+SOCIAL_WORK_PROFESSIONAL_TERMS = {
+    'strengths-based', 'person-centered', 'trauma-informed', 'culturally competent',
+    'self-determination', 'empowerment', 'advocacy', 'social justice', 'systemic',
+    'intersectionality', 'resilience', 'protective factors', 'risk factors',
+    'assessment', 'intervention', 'case management', 'referral', 'collaboration'
+}
+
+# Mental health crisis terms (essential but basic)
+CRISIS_ASSESSMENT_TERMS = {
+    'suicidal', 'suicide', 'self-harm', 'harm', 'hurt', 'safety', 'plan', 'means',
+    'access', 'intent', 'attempt', 'thoughts', 'feelings', 'crisis', 'emergency',
+    'immediate', 'urgent', 'risk', 'protective', 'coping'
+}
+
+# General supportive terms (baseline)
+SUPPORTIVE_TERMS = {
+    'support', 'help', 'understand', 'listen', 'care', 'confidential',
+    'therapy', 'counseling', 'treatment', 'resources', 'professional',
+    'emotions', 'valid', 'normal', 'difficult', 'challenging', 'important'
+}
+
+# Negative ethical indicators (harmful or unprofessional)
+ETHICAL_NEGATIVE_TERMS = {
+    # Judgmental or dismissive language
+    'crazy', 'insane', 'nuts', 'psycho', 'weird', 'abnormal', 'wrong',
+    'stupid', 'ridiculous', 'overreacting', 'dramatic', 'attention',
+    
+    # Minimizing or invalidating terms
+    'just', 'simply', 'only', 'merely', 'easily', 'quickly', 'obviously',
+    'clearly', 'everyone', 'normal people', 'get over', 'move on',
+    
+    # Unprofessional or harmful advice
+    'ignore', 'forget', 'don\'t think', 'stop thinking', 'be positive',
+    'cheer up', 'smile', 'others have it worse', 'be grateful'
+}
+
+# Professional question indicators for mental health assessment
+PROFESSIONAL_QUESTION_INDICATORS = {
+    # Suicide risk assessment
+    'thoughts', 'suicide', 'suicidal', 'harm', 'hurt', 'end', 'life',
+    'plan', 'method', 'means', 'access', 'intent', 'attempt',
+    
+    # Mental health assessment
+    'depression', 'anxiety', 'mood', 'sleep', 'appetite', 'energy',
+    'concentration', 'symptoms', 'medication', 'treatment',
+    
+    # Support system assessment
+    'family', 'friends', 'support', 'alone', 'isolated', 'connected',
+    'relationships', 'trust', 'talk', 'share',
+    
+    # Identity and discrimination assessment
+    'discrimination', 'rejection', 'acceptance', 'bullying', 'harassment',
+    'coming out', 'transition', 'gender', 'sexual', 'identity'
 }

@@ -3,20 +3,37 @@
 # Licensed under the MIT Academic Research License
 # See LICENSE file in the project root for details.
 
+"""
+Evaluation Algorithm Module for AI Chatbot Assessment
+
+This module contains all evaluation functions for assessing AI chatbot responses
+in mental health and LGBTQ+ contexts. Includes ROUGE, METEOR, ethical alignment,
+sentiment distribution, inclusivity, and complexity scoring.
+"""
+
 from src.commonconst import *
 import hashlib
 import random
+import os
+
+# =================================
+# SYSTEM INITIALIZATION
+# =================================
 
 # Set random seeds for deterministic behavior
 random.seed(RANDOM_SEED)
 np.random.seed(RANDOM_SEED)
-import os
 os.environ['PYTHONHASHSEED'] = str(RANDOM_SEED)
 
-# Note: Removed TensorFlow dependencies - now using rule-based ethical scoring
+# Initialize models
+emotion_model = EMOTIONAL_MODEL
 
 # Cache for ethical alignment scores to ensure consistency
 _ethical_alignment_cache = {}
+
+# =================================
+# UTILITY FUNCTIONS
+# =================================
 
 def clear_ethical_alignment_cache():
     """
@@ -24,9 +41,6 @@ def clear_ethical_alignment_cache():
     """
     global _ethical_alignment_cache
     _ethical_alignment_cache.clear()
-
-# Initialize Sentiment distribution model
-emotion_model = EMOTIONAL_MODEL
 
 def load_responses(file_path):
     """
@@ -48,7 +62,23 @@ def load_responses(file_path):
             })
     return responses
 
-# ROUGE evaluation
+def save_evaluation_to_csv(file_path, evaluation_data):
+    """
+    Writes the evaluation results to a CSV file with predefined column headers.
+
+    Args:
+        file_path (str): Destination path for the CSV output.
+        evaluation_data (list of dict): Metric results to be saved.
+    """
+    with open(file_path, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=EVALUATION_FIELDNAMES)
+        writer.writeheader()
+        writer.writerows(evaluation_data)
+
+# =================================
+# ROUGE EVALUATION
+# =================================
+
 def calculate_average_rouge(reference_text, generated_text):
     """
     Calculates a weighted average ROUGE score between reference and generated texts.
@@ -61,25 +91,30 @@ def calculate_average_rouge(reference_text, generated_text):
     Returns:
         float: Adjusted ROUGE score rounded to two decimal places.
     """
-    scorer = rouge_scorer.RougeScorer(ROUGE_METRICS, use_stemmer=ROUGE_USE_STEMMER) # initialize the rouge scorer
-    scores = scorer.score(reference_text, generated_text) # produce rouge score per metric
+    scorer = rouge_scorer.RougeScorer(ROUGE_METRICS, use_stemmer=ROUGE_USE_STEMMER)
+    scores = scorer.score(reference_text, generated_text)
+    
     avg_rouge = round(
         sum(
-            (scores['rouge1'].precision * 0.5 + scores['rouge1'].recall * 0.5) * 0.4 + # rouge1 (word-level overlap => 0.4)
-            (scores['rouge2'].precision * 0.6 + scores['rouge2'].recall * 0.4) * 0.3 + # rouge2 (bigram-level overlap => 0.3)
-            (scores['rougeL'].precision * 0.4 + scores['rougeL'].recall * 0.6) * 0.3 # rougeL (sentence-level overlap => 0.3)
+            (scores['rouge1'].precision * 0.5 + scores['rouge1'].recall * 0.5) * 0.4 +  # rouge1 (40%)
+            (scores['rouge2'].precision * 0.6 + scores['rouge2'].recall * 0.4) * 0.3 +  # rouge2 (30%)
+            (scores['rougeL'].precision * 0.4 + scores['rougeL'].recall * 0.6) * 0.3    # rougeL (30%)
             for metric in ROUGE_METRICS
         ) / len(ROUGE_METRICS), 2
     )
     return avg_rouge
 
-# METEOR evaluation
+# =================================
+# METEOR EVALUATION
+# =================================
+
 def calculate_meteor(reference_text, generated_text):
     """
     Computes the METEOR score between reference and generated texts.
     METEOR is tuned to prioritize synonym recall and content overlap.
 
-    Useful in evaluating empathetic or conversational language, where semantic similarity matters more than exact word overlap.
+    Useful in evaluating empathetic or conversational language, where semantic 
+    similarity matters more than exact word overlap.
 
     Args:
         reference_text (str): Human-authored response.
@@ -88,15 +123,22 @@ def calculate_meteor(reference_text, generated_text):
     Returns:
         float: METEOR score rounded to two decimal places.
     """
-    reference_tokens = nltk.word_tokenize(reference_text.lower()) # a list of words from the human-written text
-    hypothesis_tokens = nltk.word_tokenize(generated_text.lower()) # a list of words from the chatbot response
-    meteor = meteor_score([reference_tokens], hypothesis_tokens, alpha=0.8, beta=1.5, gamma=0.6)
-    # alpha = 0.8: Controls balance between precision and recall
-	# beta = 1.5: Influences how harshly to penalize incorrect word order
-	# gamma = 0.6: Penalty for fragmentation (how scattered the alignment is)
+    reference_tokens = nltk.word_tokenize(reference_text.lower())
+    hypothesis_tokens = nltk.word_tokenize(generated_text.lower())
+    
+    meteor = meteor_score(
+        [reference_tokens], 
+        hypothesis_tokens, 
+        alpha=METEOR_ALPHA, 
+        beta=METEOR_BETA, 
+        gamma=METEOR_GAMMA
+    )
     return round(meteor, 2)
 
-# Ethical alignment evaluation
+# =================================
+# ETHICAL ALIGNMENT EVALUATION
+# =================================
+
 def evaluate_ethical_alignment(reference_text, generated_text):
     """
     Rule-based ethical alignment assessment for mental health and LGBTQ+ sensitivity.
@@ -222,13 +264,12 @@ def evaluate_ethical_alignment(reference_text, generated_text):
     
     final_score = max(0.0, base_score - negative_penalty)
     
-    # Remove artificial floor - let natural scoring differentiate
     # Only ensure minimum for truly professional responses
     if (len(crisis_matches) >= 3 and len(supportive_matches) >= 2 and 
         question_count >= 5 and not negative_matches):
         final_score = max(final_score, 0.50)  # Minimum for competent response
     
-    # Remove the 0.95 cap - allow full range to 1.0
+    # Allow full range to 1.0
     final_score = min(final_score, 1.0)
     
     # Round to ensure consistent precision and cache the result
@@ -237,7 +278,10 @@ def evaluate_ethical_alignment(reference_text, generated_text):
     
     return final_score
 
-# Sentiment distribution evaluation
+# =================================
+# SENTIMENT DISTRIBUTION EVALUATION
+# =================================
+
 def evaluate_sentiment_distribution(reference_text, generated_text, emotion_weights):
     """
     Compares the emotional tone of chatbot and reference responses using a weighted emotion vector.
@@ -255,18 +299,21 @@ def evaluate_sentiment_distribution(reference_text, generated_text, emotion_weig
         raw_emotions = emotion_model(text)[0]
         emotion_dict = {e['label'].lower(): e['score'] for e in raw_emotions}
         return np.array([
-            emotion_dict.get(emotion, 0.0) * emotion_weights.get(emotion, 1.0) # if relevant is not found, use 0.0
+            emotion_dict.get(emotion, 0.0) * emotion_weights.get(emotion, 1.0)
             for emotion in RELEVANT_EMOTIONS
-            ]).reshape(1, -1) # prepare for cosine similarity calculation
+            ]).reshape(1, -1)
     
-    # extracts the emotion vectors for both reference and generated texts
+    # Extract the emotion vectors for both reference and generated texts
     ref_vec = get_weighted_vector(reference_text)
     gen_vec = get_weighted_vector(generated_text)
 
-    # calculates the cosine similarity between the two vectors
-    # Cosine similarity = 1 indicates identical vectors, while 0 indicates orthogonal vectors.
+    # Calculate the cosine similarity between the two vectors
     similarity = cosine_similarity(ref_vec, gen_vec)[0][0]
     return round(similarity, 2)
+
+# =================================
+# INCLUSIVITY EVALUATION
+# =================================
 
 def evaluate_inclusivity_score(reference_text, generated_text):
     """
@@ -280,25 +327,29 @@ def evaluate_inclusivity_score(reference_text, generated_text):
     Returns:
         float: Inclusivity score [0.0–1.0], with higher scores for inclusive and affirming responses.
     """
-    words = nltk.word_tokenize(generated_text.lower()) # tokenize the response and convert to lowercase
+    words = nltk.word_tokenize(generated_text.lower())
 
     # Count the number of inclusive and penalty terms
     inclusive_count = sum(
-        4 if word in CORE_TERMS else 2.5 if word in SECONDARY_TERMS else 2 # 4 points for core terms, 2.5 points for secondary terms
-        for word in words if word in INCLUSIVITY_LEXICON # 2 points for any term in the inclusivity lexicon
+        4 if word in CORE_TERMS else 2.5 if word in SECONDARY_TERMS else 2
+        for word in words if word in INCLUSIVITY_LEXICON
     )
 
     # Count the number of penalty terms and penalize accordingly
     penalty_count = sum(
-        1.0 if word in SEVERE_PENALTY_TERMS else 0.5 # 0.5 points for severe penalty terms, 1 point for other penalty terms
+        1.0 if word in SEVERE_PENALTY_TERMS else 0.5
         for word in words if word in PENALTY_TERMS
     )
 
-    # measures net positive language per word
+    # Measures net positive language per word
     total_words = len(words)
-    inclusivity_density = (inclusive_count - penalty_count) / total_words if total_words > 0 else 0 # encourage longer responses to still keep a high proportion of inclusive terms
+    inclusivity_density = (inclusive_count - penalty_count) / total_words if total_words > 0 else 0
     inclusivity_score = max(0, inclusivity_density + (inclusive_count / 15))
     return round(inclusivity_score, 2)
+
+# =================================
+# COMPLEXITY EVALUATION
+# =================================
 
 def evaluate_complexity_score(reference_text, generated_text, readability_constants):
     """
@@ -313,13 +364,12 @@ def evaluate_complexity_score(reference_text, generated_text, readability_consta
     Returns:
         float: Composite complexity score rounded to 2 decimals.
     """
-    sentences = nltk.sent_tokenize(generated_text) # split the response into sentences
+    sentences = nltk.sent_tokenize(generated_text)
 
     # Calculate average sentence length
-    # Longer sentences may indicate higher complexity, but may reduce clarity in support contexts
     avg_sentence_length = sum(len(nltk.word_tokenize(sentence)) for sentence in sentences) / len(sentences) if sentences else 0
 
-    # count total words
+    # Count total words
     total_words = sum(len(nltk.word_tokenize(sentence)) for sentence in sentences)
 
     # Use CMU Pronouncing Dictionary to count syllables
@@ -337,7 +387,8 @@ def evaluate_complexity_score(reference_text, generated_text, readability_consta
         """
         phonemes_list = cmudict.get(word.lower(), [[0]])
         return sum(1 for phoneme in phonemes_list[0] if isinstance(phoneme, str) and phoneme[-1].isdigit())
-    total_syllables = sum(count_syllables(word) for word in nltk.word_tokenize(generated_text)) # total up all the syllables across all words
+    
+    total_syllables = sum(count_syllables(word) for word in nltk.word_tokenize(generated_text))
     
     # Calculate Flesch-Kincaid score
     fk_score = (
@@ -345,8 +396,13 @@ def evaluate_complexity_score(reference_text, generated_text, readability_consta
         readability_constants['READABILITY_FK_SENTENCE_WEIGHT'] * (total_words / len(sentences)) -
         readability_constants['READABILITY_FK_SYLLABLE_WEIGHT'] * (total_syllables / total_words)
     ) if total_words > 0 else 0
+    
     complexity_score = (avg_sentence_length * readability_constants['SENTENCE_COMPLEXITY_WEIGHT'] + fk_score) / 2
     return round(complexity_score, 2)
+
+# =================================
+# MAIN EVALUATION ENGINE
+# =================================
 
 def generate_evaluation_scores(integrated_responses):
     """
@@ -360,7 +416,7 @@ def generate_evaluation_scores(integrated_responses):
     Metrics:
         - ROUGE (Average): Measures surface-level token overlap
         - METEOR: Rewards synonym use and word order
-        - Ethical Alignment: BERT-based binary classifier for appropriate framing
+        - Ethical Alignment: Rule-based assessment for mental health appropriateness
         - Sentiment Distribution: Emotion alignment via cosine similarity
         - Inclusivity: Measures affirming vs. stigmatizing language
         - Complexity: Balances readability with sentence richness
@@ -375,34 +431,34 @@ def generate_evaluation_scores(integrated_responses):
     evaluation_data = []
 
     # Extract the human response from the integrated responses
-    human_response = next(item['Response'] for item in integrated_responses if item['Platform'] == 'Human') # Ground truth
+    human_response = next(item['Response'] for item in integrated_responses if item['Platform'] == 'Human')
     
-    # skip the human response in the evaluation
+    # Skip the human response in the evaluation
     for response in integrated_responses:
         if response['Platform'] == 'Human':
             continue
 
-        generated_text = response['Response'] # pull out all chatbot responses
+        generated_text = response['Response']
 
-        # surface overlap between human and chatbot responses
+        # Surface overlap between human and chatbot responses
         avg_rouge = calculate_average_rouge(human_response, generated_text)
 
-        # semantic similarity between human and chatbot responses
+        # Semantic similarity between human and chatbot responses
         meteor = calculate_meteor(human_response, generated_text)
 
-        # Uses a fine-tuned BERT classifier to determine how ethically appropriate the chatbot’s language is
+        # Rule-based ethical assessment for mental health appropriateness
         ethical_alignment = evaluate_ethical_alignment(human_response, generated_text)
 
-        # Converts both texts into weighted emotion vectors and compares their emotional similarity
+        # Emotional similarity between responses
         sentiment_distribution = evaluate_sentiment_distribution(human_response, generated_text, EMOTION_WEIGHTS)
 
-        # Detects use of affirming terms vs. stigmatizing words in the chatbot’s language
+        # LGBTQ+ affirming language assessment
         inclusivity_score = evaluate_inclusivity_score(human_response, generated_text)
 
-        # Computes a combined score from average sentence length and Flesch-Kincaid readability
+        # Readability and complexity balance
         complexity_score = evaluate_complexity_score(human_response, generated_text, READABILITY_CONSTANTS)
 
-        # Organizes all scores for this chatbot into one row
+        # Organize all scores for this chatbot into one row
         evaluation_data.append({
             'Chatbot': response['Platform'],
             'Response': generated_text,
@@ -415,17 +471,3 @@ def generate_evaluation_scores(integrated_responses):
         })
 
     return evaluation_data
-
-
-def save_evaluation_to_csv(file_path, evaluation_data):
-    """
-    Writes the evaluation results to a CSV file with predefined column headers.
-
-    Args:
-        file_path (str): Destination path for the CSV output.
-        evaluation_data (list of dict): Metric results to be saved.
-    """
-    with open(file_path, mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.DictWriter(file, fieldnames=EVALUATION_FIELDNAMES)
-        writer.writeheader()
-        writer.writerows(evaluation_data)

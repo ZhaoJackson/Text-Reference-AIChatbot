@@ -1,5 +1,6 @@
-# Ignore all DOCX files under data/
+# Ignore all DOCX files under data/ except Test Reference Text.docx
 src/data/*.docx
+!src/data/Test Reference Text.docx
 
 # Ignore selected CSV files under output/
 src/outputs/*.csv

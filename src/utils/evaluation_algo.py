@@ -139,13 +139,12 @@ def calculate_meteor(reference_text, generated_text):
 # ETHICAL ALIGNMENT EVALUATION
 # =================================
 
-def evaluate_ethical_alignment(reference_text, generated_text):
+def evaluate_ethical_alignment(generated_text):
     """
     Rule-based ethical alignment assessment for mental health and LGBTQ+ sensitivity.
     Evaluates professional language, supportive tone, appropriate questioning, and absence of harmful content.
 
     Args:
-        reference_text (str): Human response (unused here but consistent with signature).
         generated_text (str): Chatbot response to evaluate.
 
     Returns:
@@ -315,7 +314,7 @@ def evaluate_sentiment_distribution(reference_text, generated_text, emotion_weig
 # INCLUSIVITY EVALUATION
 # =================================
 
-def evaluate_inclusivity_score(reference_text, generated_text):
+def evaluate_inclusivity_score(generated_text):
     """
     Scores the chatbot response based on the presence of affirming and inclusive language.
     Boosts for LGBTQ+-affirming terms and penalizes for stigmatizing or non-inclusive terms.
@@ -351,7 +350,7 @@ def evaluate_inclusivity_score(reference_text, generated_text):
 # COMPLEXITY EVALUATION
 # =================================
 
-def evaluate_complexity_score(reference_text, generated_text, readability_constants):
+def evaluate_complexity_score(generated_text, readability_constants):
     """
     Evaluates textual complexity using sentence length and Flesch-Kincaid readability heuristics.
     Balances accessibility with nuanced language for mental health communication.
@@ -447,16 +446,16 @@ def generate_evaluation_scores(integrated_responses):
         meteor = calculate_meteor(human_response, generated_text)
 
         # Rule-based ethical assessment for mental health appropriateness
-        ethical_alignment = evaluate_ethical_alignment(human_response, generated_text)
+        ethical_alignment = evaluate_ethical_alignment(generated_text)
 
         # Emotional similarity between responses
         sentiment_distribution = evaluate_sentiment_distribution(human_response, generated_text, EMOTION_WEIGHTS)
 
         # LGBTQ+ affirming language assessment
-        inclusivity_score = evaluate_inclusivity_score(human_response, generated_text)
+        inclusivity_score = evaluate_inclusivity_score(generated_text)
 
         # Readability and complexity balance
-        complexity_score = evaluate_complexity_score(human_response, generated_text, READABILITY_CONSTANTS)
+        complexity_score = evaluate_complexity_score(generated_text, READABILITY_CONSTANTS)
 
         # Organize all scores for this chatbot into one row
         evaluation_data.append({

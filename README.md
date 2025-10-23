@@ -242,7 +242,7 @@ These platforms were selected for their relevance in AI ethics, mental health, a
 ### **Lead Researcher**:
 **Zichen Zhao**  
 📧 [zz3119@columbia.edu](mailto:zz3119@columbia.edu)  
-🔬 AI Ethics in Mental Health, LGBTQ+ Technology Studies
+🔬 AI Ethics in Mental Health and AI Technology Studies
 
 ### **Web Application Development**:
 **Sam Abdella** - gAyl BENCHMARK TOOL  

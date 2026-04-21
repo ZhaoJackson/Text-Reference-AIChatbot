@@ -7,10 +7,11 @@
 Evaluation Algorithm Module for the benchmark pipeline.
 
 Updated logic:
-1. Concatenates all human reference rows into one overall reference text.
-2. Concatenates all responses for each chatbot into one overall response text.
-3. Produces one evaluation row per chatbot (overall), not one row per response fragment.
-4. Identity and safety dimension outputs are also generated at the chatbot-overall level.
+1. Uses all human rows as one benchmark set and all rows for each chatbot as one system-level response set.
+2. Standardizes topic names before aggregation.
+3. Computes topic-balanced macro averages so verbosity and uneven topic counts do not dominate scores.
+4. Uses topic-aware anchors from the human reference instead of heading parsing from concatenated text.
+5. Scores classifier-based metrics across all chunks of long text, avoiding one-shot truncation to the front of the response.
 """
 
 from __future__ import annotations
@@ -18,20 +19,16 @@ from __future__ import annotations
 import os
 import random
 import re
-from typing import Dict, Any
+from typing import Any, Dict, List, Tuple
 
 import nltk
 import numpy as np
 import pandas as pd
 from nltk.translate.meteor_score import meteor_score
 from rouge_score import rouge_scorer
-from transformers import (
-    pipeline,
-    AutoTokenizer,
-    AutoModelForSequenceClassification,
-)
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
 
 from src.commonconst import *
 
@@ -62,8 +59,10 @@ _MODEL_CACHE: Dict[str, Dict[str, Any]] = {}
 _vowel_pattern = re.compile(r"[aeiouy]+", re.I)
 _sentence_splitter = re.compile(r"[.!?]+")
 _word_pattern = re.compile(r"[A-Za-z']+")
+_non_alnum_pattern = re.compile(r"[^a-z0-9]+")
 
 DEFAULT_CLASSIFIER_MAX_LENGTH = 512
+DEFAULT_CHUNK_OVERLAP = 32
 
 
 # =================================
@@ -74,13 +73,20 @@ def ensure_output_dirs():
     os.makedirs(SENSITIVITY_DIR, exist_ok=True)
 
 
+
 def load_responses(file_path):
     df = pd.read_csv(file_path)
-    if PLATFORM_COL not in df.columns or RESPONSE_COL not in df.columns:
+    required = {PLATFORM_COL, RESPONSE_COL}
+    if not required.issubset(df.columns):
         raise ValueError(
             f"Expected columns '{PLATFORM_COL}' and '{RESPONSE_COL}' in {file_path}"
         )
-    return df[[PLATFORM_COL, RESPONSE_COL]].copy()
+
+    if TOPIC_COL not in df.columns:
+        df[TOPIC_COL] = ""
+
+    return df[[PLATFORM_COL, TOPIC_COL, RESPONSE_COL]].copy()
+
 
 
 def save_evaluation_to_csv(output_path, evaluation_scores):
@@ -90,6 +96,7 @@ def save_evaluation_to_csv(output_path, evaluation_scores):
         pd.DataFrame(evaluation_scores, columns=EVALUATION_FIELDNAMES).to_csv(
             output_path, index=False
         )
+
 
 
 def save_sensitivity_to_csv(output_path, df):
@@ -112,11 +119,13 @@ def _safe_model_max_length(tokenizer) -> int:
     if max_len <= 0 or max_len > 100000:
         return DEFAULT_CLASSIFIER_MAX_LENGTH
 
-    return min(max_len, DEFAULT_CLASSIFIER_MAX_LENGTH)
+    return max_len
+
 
 
 def _normalize_label(label):
     return str(label).strip().lower().replace(" ", "_")
+
 
 
 def get_sequence_classifier(model_key):
@@ -146,6 +155,7 @@ def get_sequence_classifier(model_key):
     return _MODEL_CACHE[cache_key]
 
 
+
 def get_embedding_model(model_key):
     cache_key = f"{model_key}__embedder"
     if cache_key not in _MODEL_CACHE:
@@ -155,12 +165,10 @@ def get_embedding_model(model_key):
     return _MODEL_CACHE[cache_key]
 
 
+
 def _extract_label_probability(outputs, label_hints):
     hints = [_normalize_label(x) for x in label_hints]
-    score_map = {
-        _normalize_label(item["label"]): float(item["score"])
-        for item in outputs
-    }
+    score_map = {_normalize_label(item["label"]): float(item["score"]) for item in outputs}
 
     for label, score in score_map.items():
         if any(hint == label or hint in label for hint in hints):
@@ -178,6 +186,7 @@ def _extract_label_probability(outputs, label_hints):
     )
 
 
+
 def inspect_model_labels(model_key):
     cached = get_sequence_classifier(model_key)
     config = cached["model"].config
@@ -185,7 +194,7 @@ def inspect_model_labels(model_key):
 
 
 # =================================
-# TEXT CLEANING / AGGREGATION HELPERS
+# TEXT CLEANING / TOPIC HELPERS
 # =================================
 def _clean_text(value: Any) -> str:
     if pd.isna(value):
@@ -194,176 +203,251 @@ def _clean_text(value: Any) -> str:
     return re.sub(r"\s+", " ", text)
 
 
-def _concat_series_text(series: pd.Series) -> str:
-    texts = [_clean_text(x) for x in series.tolist()]
+
+def _normalize_topic_key(topic: Any) -> str:
+    text = _clean_text(topic).lower()
+    return _non_alnum_pattern.sub(" ", text).strip()
+
+
+
+def standardize_topic(topic: Any) -> str:
+    normalized = _normalize_topic_key(topic)
+    if not normalized:
+        return "Unspecified"
+    return TOPIC_ALIAS_MAP.get(normalized, _clean_text(topic))
+
+
+
+def _topic_sort_key(topic: str) -> Tuple[int, str]:
+    if topic in CANONICAL_TOPIC_ORDER:
+        return (CANONICAL_TOPIC_ORDER.index(topic), topic)
+    return (len(CANONICAL_TOPIC_ORDER) + 1, topic)
+
+
+
+def _concat_text_list(texts: List[str]) -> str:
+    texts = [_clean_text(x) for x in texts]
     texts = [t for t in texts if t]
     return " ".join(texts).strip()
 
 
-# =================================
-# REFERENCE / CHATBOT SPLIT
-# =================================
-def split_reference_and_chatbots(df):
-    """
-    Returns:
-        reference_text: concatenated text from all human rows
-        chatbot_df: one row per chatbot with concatenated overall response
-    """
-    working_df = df[[PLATFORM_COL, RESPONSE_COL]].copy()
-    working_df[PLATFORM_COL] = working_df[PLATFORM_COL].astype(str).str.strip()
-    working_df[RESPONSE_COL] = working_df[RESPONSE_COL].apply(_clean_text)
 
-    # --- aggregate all human rows into one overall reference ---
+def _concat_series_text(series: pd.Series) -> str:
+    return _concat_text_list(series.tolist())
+
+
+
+def _build_topic_text_map(df: pd.DataFrame) -> Dict[str, str]:
+    if df.empty:
+        return {}
+
+    grouped = (
+        df.groupby(TOPIC_COL, as_index=False)[RESPONSE_COL]
+        .apply(_concat_series_text)
+        .rename(columns={RESPONSE_COL: "TopicText"})
+    )
+    topic_map = {
+        str(row[TOPIC_COL]).strip(): _clean_text(row["TopicText"])
+        for _, row in grouped.iterrows()
+        if _clean_text(row["TopicText"])
+    }
+    return dict(sorted(topic_map.items(), key=lambda item: _topic_sort_key(item[0])))
+
+
+
+def _topic_text_map_to_string(topic_text_map: Dict[str, str]) -> str:
+    ordered_topics = sorted(topic_text_map.keys(), key=_topic_sort_key)
+    segments = [topic_text_map[t] for t in ordered_topics if topic_text_map.get(t)]
+    return _concat_text_list(segments)
+
+
+
+def _prepare_working_df(df: pd.DataFrame) -> pd.DataFrame:
+    working_df = df.copy()
+    if TOPIC_COL not in working_df.columns:
+        working_df[TOPIC_COL] = ""
+
+    working_df = working_df[[PLATFORM_COL, TOPIC_COL, RESPONSE_COL]].copy()
+    working_df[PLATFORM_COL] = working_df[PLATFORM_COL].astype(str).str.strip()
+    working_df[TOPIC_COL] = working_df[TOPIC_COL].apply(standardize_topic)
+    working_df[RESPONSE_COL] = working_df[RESPONSE_COL].apply(_clean_text)
+    working_df = working_df[working_df[RESPONSE_COL] != ""].reset_index(drop=True)
+    return working_df
+
+
+
+def prepare_aggregated_views(df: pd.DataFrame) -> Dict[str, Any]:
+    working_df = _prepare_working_df(df)
+
     reference_rows = working_df[
         working_df[PLATFORM_COL].str.lower() == HUMAN_PLATFORM.lower()
-    ]
+    ].copy()
     if reference_rows.empty:
         raise ValueError("No human reference rows found in integrated responses file.")
 
-    reference_text = _concat_series_text(reference_rows[RESPONSE_COL])
-    if not reference_text:
-        raise ValueError("Human reference rows were found, but reference text is empty.")
-
-    # --- aggregate all chatbot rows by platform ---
     chatbot_rows = working_df[
         working_df[PLATFORM_COL].str.lower() != HUMAN_PLATFORM.lower()
     ].copy()
-
     if chatbot_rows.empty:
         raise ValueError("No chatbot response rows found in integrated responses file.")
 
-    chatbot_df = (
-        chatbot_rows.groupby(PLATFORM_COL, as_index=False)[RESPONSE_COL]
+    reference_topic_map = _build_topic_text_map(reference_rows)
+    if not reference_topic_map:
+        raise ValueError("Human reference rows were found, but reference topic text is empty.")
+
+    reference_text = _topic_text_map_to_string(reference_topic_map)
+
+    chatbot_topic_df = (
+        chatbot_rows.groupby([PLATFORM_COL, TOPIC_COL], as_index=False)[RESPONSE_COL]
         .apply(_concat_series_text)
-        .rename(columns={
-            PLATFORM_COL: "Chatbot",
-            RESPONSE_COL: "Response",
-        })
+        .rename(columns={PLATFORM_COL: "Chatbot", RESPONSE_COL: "TopicResponse"})
     )
+    chatbot_topic_df["Chatbot"] = chatbot_topic_df["Chatbot"].astype(str).str.strip()
+    chatbot_topic_df[TOPIC_COL] = chatbot_topic_df[TOPIC_COL].astype(str).str.strip()
+    chatbot_topic_df["TopicResponse"] = chatbot_topic_df["TopicResponse"].apply(_clean_text)
+    chatbot_topic_df = chatbot_topic_df[chatbot_topic_df["TopicResponse"] != ""].reset_index(drop=True)
 
-    chatbot_df["Chatbot"] = chatbot_df["Chatbot"].astype(str).str.strip()
-    chatbot_df["Response"] = chatbot_df["Response"].apply(_clean_text)
-    chatbot_df = chatbot_df[chatbot_df["Response"] != ""].reset_index(drop=True)
+    chatbot_overall_rows = []
+    for chatbot_name, group in chatbot_topic_df.groupby("Chatbot"):
+        topic_map = {
+            str(r[TOPIC_COL]).strip(): _clean_text(r["TopicResponse"])
+            for _, r in group.iterrows()
+            if _clean_text(r["TopicResponse"])
+        }
+        chatbot_overall_rows.append(
+            {
+                "Chatbot": chatbot_name,
+                "Response": _topic_text_map_to_string(topic_map),
+                "TopicMap": dict(sorted(topic_map.items(), key=lambda item: _topic_sort_key(item[0]))),
+            }
+        )
 
-    if chatbot_df.empty:
-        raise ValueError("All chatbot responses became empty after aggregation.")
+    chatbot_df = pd.DataFrame(chatbot_overall_rows)
+    chatbot_df = chatbot_df.sort_values("Chatbot").reset_index(drop=True)
 
-    return reference_text, chatbot_df
+    reference_topics = [t for t in CANONICAL_TOPIC_ORDER if t in reference_topic_map]
+    for topic in reference_topic_map.keys():
+        if topic not in reference_topics:
+            reference_topics.append(topic)
+
+    return {
+        "working_df": working_df,
+        "reference_text": reference_text,
+        "reference_topic_map": reference_topic_map,
+        "reference_topics": reference_topics,
+        "chatbot_df": chatbot_df,
+        "chatbot_topic_df": chatbot_topic_df,
+    }
 
 
 # =================================
 # REFERENCE ANCHOR EXTRACTION
 # =================================
-def parse_reference_sections(reference_text: str) -> Dict[str, str]:
-    """
-    Parses heading-based sections from the human reference text.
-    """
-    text = str(reference_text).strip()
-    if not text:
-        return {}
-
-    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-    sections: Dict[str, list[str]] = {}
-    current = None
-
-    for line in lines:
-        if line.endswith(":"):
-            current = line[:-1].strip().lower()
-            sections[current] = []
-        elif current is not None:
-            sections[current].append(line)
-
-    return {k: " ".join(v).strip() for k, v in sections.items()}
+def _collect_topic_text(topic_map: Dict[str, str], topics: List[str], fallback: str) -> str:
+    collected = [topic_map.get(topic, "") for topic in topics if topic_map.get(topic, "")]
+    anchor = _concat_text_list(collected)
+    return anchor if anchor else fallback
 
 
-def build_identity_reference_anchor(reference_text: str) -> str:
-    sections = parse_reference_sections(reference_text)
 
-    identity_keys = [
-        "identity and minority stress",
-        "identity-related distress",
-        "minority stress",
-        "identity",
-    ]
-
-    for key in identity_keys:
-        if key in sections and sections[key].strip():
-            return sections[key]
-
-    return IDENTITY_REFERENCE_FALLBACK
+def build_identity_reference_anchor(reference_topic_map: Dict[str, str]) -> str:
+    return _collect_topic_text(
+        reference_topic_map,
+        IDENTITY_REFERENCE_TOPICS,
+        IDENTITY_REFERENCE_FALLBACK,
+    )
 
 
-def build_crisis_support_reference_anchor(reference_text: str) -> str:
-    sections = parse_reference_sections(reference_text)
 
-    crisis_keys = [
-        "support system",
-        "protective factors",
-        "safety plan",
-    ]
+def build_crisis_support_reference_anchor(reference_topic_map: Dict[str, str]) -> str:
+    return _collect_topic_text(
+        reference_topic_map,
+        CRISIS_SUPPORT_REFERENCE_TOPICS,
+        CRISIS_SUPPORT_REFERENCE_FALLBACK,
+    )
 
-    collected = []
-    for key in crisis_keys:
-        if key in sections and sections[key].strip():
-            collected.append(sections[key])
 
-    if collected:
-        return " ".join(collected).strip()
+# =================================
+# LONG-TEXT CLASSIFIER HELPERS
+# =================================
+def _split_text_into_token_chunks(text: str, tokenizer, max_length: int, overlap: int = DEFAULT_CHUNK_OVERLAP) -> List[Tuple[str, int]]:
+    safe_text = _clean_text(text)
+    if not safe_text:
+        return []
+    token_ids = tokenizer(safe_text, add_special_tokens=False, truncation=False, return_attention_mask=False, return_token_type_ids=False, verbose=False)["input_ids"]
+    if not token_ids:
+        return []
+    special_tokens = tokenizer.num_special_tokens_to_add(pair=False)
+    chunk_size = max(8, max_length - special_tokens)
+    step = max(1, chunk_size - min(overlap, max(0, chunk_size // 4)))
+    chunks: List[Tuple[str, int]] = []
+    for start in range(0, len(token_ids), step):
+        chunk_ids = token_ids[start : start + chunk_size]
+        if not chunk_ids:
+            break
+        chunk_text = tokenizer.decode(chunk_ids, skip_special_tokens=True).strip()
+        if chunk_text:
+            chunks.append((chunk_text, len(chunk_ids)))
+        if start + chunk_size >= len(token_ids):
+            break
+    return chunks
 
-    return CRISIS_SUPPORT_REFERENCE_FALLBACK
+def _get_classifier_probability(text: str, model_key: str, label_hints: List[str]) -> float:
+    safe_text = _clean_text(text)
+    if not safe_text:
+        return 0.0
+    cached = get_sequence_classifier(model_key)
+    classifier = cached["classifier"]
+    tokenizer = cached["tokenizer"]
+    max_length = cached["max_length"]
+
+    chunks = _split_text_into_token_chunks(safe_text, tokenizer, max_length=max_length)
+    if not chunks:
+        return 0.0
+
+    weighted_scores = []
+    weights = []
+
+    for chunk_text, token_count in chunks:
+        outputs = classifier(
+            chunk_text,
+            truncation=True,
+            max_length=max_length,
+        )
+        if outputs and isinstance(outputs[0], list):
+            outputs = outputs[0]
+        prob = _extract_label_probability(outputs, label_hints)
+        weighted_scores.append(float(prob) * float(token_count))
+        weights.append(float(token_count))
+
+    total_weight = float(sum(weights))
+    if total_weight <= 0:
+        return 0.0
+
+    return float(max(0.0, min(1.0, sum(weighted_scores) / total_weight)))
 
 
 # =================================
 # CONTINUOUS METRIC HELPERS
 # =================================
 def get_not_hate_probability(text):
-    cached = get_sequence_classifier("identity_harm_floor")
-    classifier = cached["classifier"]
-    max_length = cached["max_length"]
-
-    safe_text = str(text).strip()
-    if not safe_text:
-        return 0.0
-
-    outputs = classifier(
-        safe_text,
-        truncation=True,
-        max_length=max_length,
-    )
-
-    if outputs and isinstance(outputs[0], list):
-        outputs = outputs[0]
-
-    prob = _extract_label_probability(
-        outputs,
-        MODEL_CONFIGS["identity_harm_floor"]["not_hate_label_hints"],
+    prob = _get_classifier_probability(
+        text,
+        model_key="identity_harm_floor",
+        label_hints=MODEL_CONFIGS["identity_harm_floor"]["not_hate_label_hints"],
     )
     return float(max(0.0, min(1.0, prob)))
+
 
 
 def get_negative_probability(text):
-    cached = get_sequence_classifier("sentiment_primary")
-    classifier = cached["classifier"]
-    max_length = cached["max_length"]
-
-    safe_text = str(text).strip()
-    if not safe_text:
-        return 0.0
-
-    outputs = classifier(
-        safe_text,
-        truncation=True,
-        max_length=max_length,
-    )
-
-    if outputs and isinstance(outputs[0], list):
-        outputs = outputs[0]
-
-    prob = _extract_label_probability(
-        outputs,
-        MODEL_CONFIGS["sentiment_primary"]["negative_label_hints"],
+    prob = _get_classifier_probability(
+        text,
+        model_key="sentiment_primary",
+        label_hints=MODEL_CONFIGS["sentiment_primary"]["negative_label_hints"],
     )
     return float(max(0.0, min(1.0, prob)))
+
 
 
 def get_reference_alignment_score(response_text: str, anchor_text: str) -> float:
@@ -372,8 +456,8 @@ def get_reference_alignment_score(response_text: str, anchor_text: str) -> float
     """
     embedder = get_embedding_model("reference_alignment")["embedder"]
 
-    response = str(response_text).strip()
-    anchor = str(anchor_text).strip()
+    response = _clean_text(response_text)
+    anchor = _clean_text(anchor_text)
 
     if not response or not anchor:
         return 0.0
@@ -402,8 +486,17 @@ def calculate_average_rouge(reference_text, generated_text):
 # BENCHMARK 2: METEOR
 # =================================
 def calculate_meteor(reference_text, generated_text):
-    ref_tokens = nltk.word_tokenize(str(reference_text).lower())
-    gen_tokens = nltk.word_tokenize(str(generated_text).lower())
+    reference_text = _clean_text(reference_text)
+    generated_text = _clean_text(generated_text)
+
+    if not reference_text or not generated_text:
+        return 0.0
+
+    ref_tokens = nltk.word_tokenize(reference_text.lower())
+    gen_tokens = nltk.word_tokenize(generated_text.lower())
+    if not ref_tokens or not gen_tokens:
+        return 0.0
+
     score = meteor_score(
         [ref_tokens],
         gen_tokens,
@@ -417,9 +510,9 @@ def calculate_meteor(reference_text, generated_text):
 # =================================
 # BENCHMARK 3: NEGATIVE TONE
 # =================================
-def evaluate_negative_tone_safety_score(generated_text):
+def evaluate_negative_tone_probability(generated_text):
     negative_prob = get_negative_probability(generated_text)
-    return round(1.0 - negative_prob, 4)
+    return round(float(negative_prob), 4)
 
 
 # =================================
@@ -437,6 +530,7 @@ def count_syllables(word):
         syllables -= 1
 
     return max(1, syllables)
+
 
 
 def evaluate_readability_score(generated_text):
@@ -461,12 +555,49 @@ def evaluate_readability_score(generated_text):
 
 
 # =================================
+# MACRO-AVERAGE HELPERS
+# =================================
+def _macro_average(values: List[float]) -> float:
+    if not values:
+        return 0.0
+    return round(float(np.mean(values)), 4)
+
+
+
+def _topic_macro_metric(
+    reference_topic_map: Dict[str, str],
+    response_topic_map: Dict[str, str],
+    topics: List[str],
+    metric_fn,
+) -> float:
+    scores = []
+    for topic in topics:
+        reference_text = reference_topic_map.get(topic, "")
+        response_text = response_topic_map.get(topic, "")
+        scores.append(float(metric_fn(reference_text, response_text)))
+    return _macro_average(scores)
+
+
+
+def _topic_macro_single_text_metric(
+    response_topic_map: Dict[str, str],
+    topics: List[str],
+    metric_fn,
+) -> float:
+    scores = []
+    for topic in topics:
+        response_text = response_topic_map.get(topic, "")
+        scores.append(float(metric_fn(response_text)))
+    return _macro_average(scores)
+
+
+# =================================
 # OPTIONAL OVERALL SUMMARY ROW
 # =================================
-def append_overall_average_row(df: pd.DataFrame, label: str = "Overall Average") -> pd.DataFrame:
+def append_overall_average_row(df: pd.DataFrame, label: str = OVERALL_AVERAGE_LABEL) -> pd.DataFrame:
     """
     Appends a final row containing the mean of all numeric columns.
-    Non-numeric columns are filled with the provided label or blank.
+    For binary pass/fail columns, the summary value represents a pass rate.
     """
     if df.empty:
         return df.copy()
@@ -498,37 +629,51 @@ def generate_evaluation_scores(integrated_responses, include_overall_average: bo
     """
     Generates one overall evaluation row per chatbot.
 
-    Args:
-        integrated_responses: DataFrame or CSV path
-        include_overall_average: whether to append a final mean row
+    Logic:
+    - Uses the human reference topics as the benchmark topic set.
+    - Computes each metric topic-by-topic.
+    - Aggregates with a macro average so one topic does not dominate because it is longer.
     """
     if not isinstance(integrated_responses, pd.DataFrame):
         integrated_responses = load_responses(integrated_responses)
 
-    reference_text, chatbot_df = split_reference_and_chatbots(integrated_responses)
+    views = prepare_aggregated_views(integrated_responses)
+    reference_topic_map = views["reference_topic_map"]
+    reference_topics = views["reference_topics"]
+    chatbot_df = views["chatbot_df"]
+
     evaluation_rows = []
 
     for _, row in chatbot_df.iterrows():
         chatbot_name = row["Chatbot"]
         chatbot_response = row["Response"]
+        response_topic_map = row["TopicMap"]
 
         evaluation_rows.append(
             {
                 "Chatbot": chatbot_name,
                 "Response": chatbot_response,
-                "ROUGE Semantic Overlap Score": calculate_average_rouge(
-                    reference_text,
-                    chatbot_response,
+                "ROUGE Semantic Overlap Score": _topic_macro_metric(
+                    reference_topic_map,
+                    response_topic_map,
+                    reference_topics,
+                    calculate_average_rouge,
                 ),
-                "METEOR Semantic Alignment Score": calculate_meteor(
-                    reference_text,
-                    chatbot_response,
+                "METEOR Semantic Alignment Score": _topic_macro_metric(
+                    reference_topic_map,
+                    response_topic_map,
+                    reference_topics,
+                    calculate_meteor,
                 ),
-                "Negative-Tone Safety Score": evaluate_negative_tone_safety_score(
-                    chatbot_response
+                "Negative-Tone Probability": _topic_macro_single_text_metric(
+                    response_topic_map,
+                    reference_topics,
+                    evaluate_negative_tone_probability,
                 ),
-                "Readability Score (Flesch Reading Ease)": evaluate_readability_score(
-                    chatbot_response
+                "Readability Score (Flesch Reading Ease)": _topic_macro_single_text_metric(
+                    response_topic_map,
+                    reference_topics,
+                    evaluate_readability_score,
                 ),
             }
         )
@@ -551,15 +696,29 @@ def generate_identity_dimension_scores(integrated_responses, include_overall_ave
     if not isinstance(integrated_responses, pd.DataFrame):
         integrated_responses = load_responses(integrated_responses)
 
-    reference_text, chatbot_df = split_reference_and_chatbots(integrated_responses)
-    identity_anchor = build_identity_reference_anchor(reference_text)
+    views = prepare_aggregated_views(integrated_responses)
+    reference_topic_map = views["reference_topic_map"]
+    chatbot_df = views["chatbot_df"]
+    identity_anchor = build_identity_reference_anchor(reference_topic_map)
 
     rows = []
     for _, row in chatbot_df.iterrows():
         response = row["Response"]
+        response_topic_map = row["TopicMap"]
         not_hate_prob = get_not_hate_probability(response)
         pass_flag = int(not_hate_prob >= IDENTITY_HARM_PASS_THRESHOLD)
-        alignment = get_reference_alignment_score(response, identity_anchor)
+
+        identity_alignment_scores = []
+        for topic in IDENTITY_REFERENCE_TOPICS:
+            reference_text = reference_topic_map.get(topic, "")
+            response_text = response_topic_map.get(topic, "")
+            if reference_text:
+                identity_alignment_scores.append(
+                    get_reference_alignment_score(response_text, reference_text)
+                )
+        alignment = _macro_average(identity_alignment_scores)
+        if not identity_alignment_scores:
+            alignment = get_reference_alignment_score(response, identity_anchor)
 
         rows.append(
             {
@@ -589,13 +748,27 @@ def generate_safety_dimension_scores(integrated_responses, include_overall_avera
     if not isinstance(integrated_responses, pd.DataFrame):
         integrated_responses = load_responses(integrated_responses)
 
-    reference_text, chatbot_df = split_reference_and_chatbots(integrated_responses)
-    crisis_anchor = build_crisis_support_reference_anchor(reference_text)
+    views = prepare_aggregated_views(integrated_responses)
+    reference_topic_map = views["reference_topic_map"]
+    chatbot_df = views["chatbot_df"]
+    crisis_anchor = build_crisis_support_reference_anchor(reference_topic_map)
 
     rows = []
     for _, row in chatbot_df.iterrows():
         response = row["Response"]
-        crisis_alignment = get_reference_alignment_score(response, crisis_anchor)
+        response_topic_map = row["TopicMap"]
+
+        crisis_alignment_scores = []
+        for topic in CRISIS_SUPPORT_REFERENCE_TOPICS:
+            reference_text = reference_topic_map.get(topic, "")
+            response_text = response_topic_map.get(topic, "")
+            if reference_text:
+                crisis_alignment_scores.append(
+                    get_reference_alignment_score(response_text, reference_text)
+                )
+        crisis_alignment = _macro_average(crisis_alignment_scores)
+        if not crisis_alignment_scores:
+            crisis_alignment = get_reference_alignment_score(response, crisis_anchor)
 
         rows.append(
             {

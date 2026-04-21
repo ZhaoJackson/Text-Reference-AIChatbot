@@ -3,10 +3,6 @@
 # Licensed under the MIT Academic Research License
 # See LICENSE file in the project root for details.
 
-"""
-Output processing and plotting module for benchmark results.
-"""
-
 from __future__ import annotations
 import os
 import re
@@ -20,43 +16,23 @@ def _sanitize_filename(name: str) -> str:
     name = re.sub(r"[\s/]+", "_", name)
     return name
 
-
 def _ensure_dir(path: str):
     os.makedirs(path, exist_ok=True)
 
-
 def _remove_overall_average_row(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Removes the summary row if present.
-    """
     if "Chatbot" not in df.columns:
         return df.copy()
-
     cleaned_df = df.copy()
     cleaned_df["Chatbot"] = cleaned_df["Chatbot"].astype(str).str.strip()
-
-    return cleaned_df[
-        cleaned_df["Chatbot"].str.lower() != "overall average"
-    ].copy()
-
+    return cleaned_df[cleaned_df["Chatbot"].str.lower() != OVERALL_AVERAGE_LABEL.lower()].copy()
 
 def _coerce_metric_column(plot_df: pd.DataFrame, metric: str) -> pd.DataFrame:
-    """
-    Safely converts the metric column to numeric for plotting.
-    """
     cleaned_df = plot_df.copy()
     cleaned_df[metric] = pd.to_numeric(cleaned_df[metric], errors="coerce")
     cleaned_df = cleaned_df.dropna(subset=[metric])
     return cleaned_df
 
-def append_overall_average_row(
-    df: pd.DataFrame,
-    label: str = OVERALL_AVERAGE_LABEL,
-) -> pd.DataFrame:
-    """
-    Appends a final row containing the mean of all numeric columns.
-    Non-numeric columns are filled with the provided label or blank.
-    """
+def append_overall_average_row(df: pd.DataFrame, label: str = OVERALL_AVERAGE_LABEL) -> pd.DataFrame:
     if df.empty:
         return df.copy()
 
@@ -76,6 +52,7 @@ def append_overall_average_row(
             overall_row[col] = ""
 
     return pd.concat([summary_df, pd.DataFrame([overall_row])], ignore_index=True)
+
 
 def plot_metric_bar(df: pd.DataFrame, metric: str, output_dir: str):
     if metric not in df.columns:
@@ -124,8 +101,6 @@ def plot_identity_dimension(identity_df: pd.DataFrame):
     if missing_cols:
         print(f"[WARN] Missing identity columns: {missing_cols}")
         return
-
-    # Probability + reference alignment
     plot_df = clean_df[
         [
             "Chatbot",
@@ -133,7 +108,6 @@ def plot_identity_dimension(identity_df: pd.DataFrame):
             "Identity-Specific Reference Alignment",
         ]
     ].copy()
-
     plot_df["Identity-Harm Floor Probability"] = pd.to_numeric(
         plot_df["Identity-Harm Floor Probability"], errors="coerce"
     )
@@ -146,7 +120,6 @@ def plot_identity_dimension(identity_df: pd.DataFrame):
             "Identity-Specific Reference Alignment",
         ]
     )
-
     if not plot_df.empty:
         plot_df = plot_df.set_index("Chatbot")
         ax = plot_df.plot(kind="bar", figsize=PLOT_COMPARISON_FIGSIZE)
@@ -162,7 +135,6 @@ def plot_identity_dimension(identity_df: pd.DataFrame):
     else:
         print("[WARN] Identity comparison plot skipped because the dataframe is empty.")
 
-    # Pass/fail
     pass_df = clean_df[["Chatbot", "Identity-Harm Floor Pass"]].copy()
     pass_df["Identity-Harm Floor Pass"] = pd.to_numeric(
         pass_df["Identity-Harm Floor Pass"], errors="coerce"
@@ -184,28 +156,17 @@ def plot_identity_dimension(identity_df: pd.DataFrame):
     else:
         print("[WARN] Identity pass/fail plot skipped because the dataframe is empty.")
 
-
 def plot_safety_dimension(safety_df: pd.DataFrame):
     _ensure_dir(SENSITIVITY_DIR)
 
     clean_df = _remove_overall_average_row(safety_df)
 
-    required_cols = [
-        "Chatbot",
-        "Crisis-Support Reference Alignment",
-    ]
+    required_cols = ["Chatbot", "Crisis-Support Reference Alignment"]
     missing_cols = [col for col in required_cols if col not in clean_df.columns]
     if missing_cols:
         print(f"[WARN] Missing safety columns: {missing_cols}")
         return
-
-    plot_df = clean_df[
-        [
-            "Chatbot",
-            "Crisis-Support Reference Alignment",
-        ]
-    ].copy()
-
+    plot_df = clean_df[["Chatbot", "Crisis-Support Reference Alignment"]].copy()
     plot_df["Crisis-Support Reference Alignment"] = pd.to_numeric(
         plot_df["Crisis-Support Reference Alignment"], errors="coerce"
     )
@@ -214,7 +175,6 @@ def plot_safety_dimension(safety_df: pd.DataFrame):
     if plot_df.empty:
         print("[WARN] Safety comparison plot skipped because the dataframe is empty.")
         return
-
     plt.figure(figsize=PLOT_FIGSIZE)
     plt.bar(plot_df["Chatbot"], plot_df["Crisis-Support Reference Alignment"])
     plt.xticks(rotation=ROTATION, ha="right")
@@ -227,64 +187,35 @@ def plot_safety_dimension(safety_df: pd.DataFrame):
     )
     plt.close()
 
-
-def build_overall_summary_table(
-    evaluation_df: pd.DataFrame,
-    identity_df: pd.DataFrame | None = None,
-    safety_df: pd.DataFrame | None = None,
-    include_overall_average: bool = False,
-) -> pd.DataFrame:
-    """
-    Merges all benchmark outputs into one summary table by Chatbot.
-
-    Behavior:
-    1. Removes the raw Response column for cleaner reporting.
-    2. Merges evaluation, identity, and safety outputs by Chatbot.
-    3. Reorders columns using OVERALL_SUMMARY_COLUMNS.
-    4. Optionally appends one final overall-average row.
-    """
+def build_overall_summary_table(evaluation_df: pd.DataFrame, identity_df: pd.DataFrame | None = None, safety_df: pd.DataFrame | None = None, include_overall_average: bool = False) -> pd.DataFrame:
     summary_df = _remove_overall_average_row(evaluation_df).copy()
-
     if "Response" in summary_df.columns:
         summary_df = summary_df.drop(columns=["Response"])
-
     if identity_df is not None:
         identity_clean = _remove_overall_average_row(identity_df).copy()
         summary_df = summary_df.merge(identity_clean, on="Chatbot", how="left")
-
     if safety_df is not None:
         safety_clean = _remove_overall_average_row(safety_df).copy()
         summary_df = summary_df.merge(safety_clean, on="Chatbot", how="left")
-
     existing_cols = [col for col in OVERALL_SUMMARY_COLUMNS if col in summary_df.columns]
     remaining_cols = [col for col in summary_df.columns if col not in existing_cols]
     summary_df = summary_df[existing_cols + remaining_cols]
-
     if include_overall_average:
         summary_df = append_overall_average_row(
             summary_df,
             label=OVERALL_AVERAGE_LABEL,
         )
-
     return summary_df
 
 def save_overall_summary_table(summary_df: pd.DataFrame, output_path: str):
     summary_df.to_csv(output_path, index=False)
 
-
-def process_all_outputs(
-    evaluation_df: pd.DataFrame,
-    identity_df: pd.DataFrame | None = None,
-    safety_df: pd.DataFrame | None = None,
-):
+def process_all_outputs(evaluation_df: pd.DataFrame, identity_df: pd.DataFrame | None = None, safety_df: pd.DataFrame | None = None):
     _ensure_dir(PLOTS_DIR)
     _ensure_dir(SENSITIVITY_DIR)
-
     for metric in VISUALIZATION_METRICS:
         plot_metric_bar(evaluation_df, metric, PLOTS_DIR)
-
     if identity_df is not None:
         plot_identity_dimension(identity_df)
-
     if safety_df is not None:
         plot_safety_dimension(safety_df)

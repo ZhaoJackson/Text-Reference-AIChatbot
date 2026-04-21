@@ -9,7 +9,7 @@ Constants and configuration module for the benchmark pipeline.
 Primary continuous metrics:
 1. ROUGE Semantic Overlap Score
 2. METEOR Semantic Alignment Score
-3. Negative-Tone Safety Score
+3. Negative-Tone Probability
 4. Readability Score (Flesch Reading Ease)
 
 Triangulated dimensions:
@@ -41,13 +41,7 @@ from rouge_score import rouge_scorer
 # =================================
 RANDOM_SEED = 42
 EPSILON = 1e-8
-
-# transformers pipeline device
-# -1 = CPU
-#  0 = first visible accelerator device
-# Set to -1 if your environment does not have CUDA / MPS support for pipeline usage.
 DEVICE = -1
-
 TEXT_CLASSIFICATION_TASK = "text-classification"
 
 # =================================
@@ -89,14 +83,14 @@ EVALUATION_FIELDNAMES = [
     "Response",
     "ROUGE Semantic Overlap Score",
     "METEOR Semantic Alignment Score",
-    "Negative-Tone Safety Score",
+    "Negative-Tone Probability",
     "Readability Score (Flesch Reading Ease)",
 ]
 
 VISUALIZATION_METRICS = [
     "ROUGE Semantic Overlap Score",
     "METEOR Semantic Alignment Score",
-    "Negative-Tone Safety Score",
+    "Negative-Tone Probability",
     "Readability Score (Flesch Reading Ease)",
 ]
 
@@ -116,12 +110,57 @@ OVERALL_SUMMARY_COLUMNS = [
     "Chatbot",
     "ROUGE Semantic Overlap Score",
     "METEOR Semantic Alignment Score",
-    "Negative-Tone Safety Score",
+    "Negative-Tone Probability",
     "Readability Score (Flesch Reading Ease)",
     "Identity-Harm Floor Probability",
     "Identity-Harm Floor Pass",
     "Identity-Specific Reference Alignment",
     "Crisis-Support Reference Alignment",
+]
+
+# =================================
+# TOPIC STANDARDIZATION
+# =================================
+CANONICAL_TOPIC_ORDER = [
+    "Current Suicidal Ideation",
+    "Risk Factors",
+    "Nature of Thoughts, Plan, & Access to Means",
+    "Support System & Protective Factors",
+    "Safety Plan",
+    "Risk Re-Assessment",
+    "Risk Level Interpretation",
+    "Other important assessment aspects",
+    "Note",
+]
+
+TOPIC_ALIAS_MAP = {
+    "current suicidal ideation": "Current Suicidal Ideation",
+    "current suicidality ideation": "Current Suicidal Ideation",
+    "risk factors": "Risk Factors",
+    "nature of thoughts plan access to means": "Nature of Thoughts, Plan, & Access to Means",
+    "nature of thoughts plan and access to means": "Nature of Thoughts, Plan, & Access to Means",
+    "support system protective factors": "Support System & Protective Factors",
+    "safety plan": "Safety Plan",
+    "risk re assessment": "Risk Re-Assessment",
+    "risk reassessment": "Risk Re-Assessment",
+    "risk level interpretation": "Risk Level Interpretation",
+    "urgent action triggers": "Risk Level Interpretation",
+    "other important assessment aspects": "Other important assessment aspects",
+    "other important assessment considerations": "Other important assessment aspects",
+    "note": "Note",
+}
+
+IDENTITY_REFERENCE_TOPICS = [
+    "Risk Factors",
+    "Support System & Protective Factors",
+    "Other important assessment aspects",
+]
+
+CRISIS_SUPPORT_REFERENCE_TOPICS = [
+    "Support System & Protective Factors",
+    "Safety Plan",
+    "Risk Re-Assessment",
+    "Risk Level Interpretation",
 ]
 
 # =================================
@@ -154,7 +193,7 @@ MODEL_CONFIGS = {
     "sentiment_primary": {
         "hf_name": "cardiffnlp/twitter-roberta-base-sentiment-latest",
         "negative_label_hints": ["negative", "neg", "label_0", "0"],
-        "score_name": "Negative-Tone Safety Score",
+        "score_name": "Negative-Tone Probability",
     },
 
     # Reference-anchored alignment model

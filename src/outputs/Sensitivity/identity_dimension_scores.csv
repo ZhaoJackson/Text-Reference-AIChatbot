@@ -1,12 +1,10 @@
 Chatbot,Identity-Harm Floor Probability,Identity-Harm Floor Pass,Identity-Specific Reference Alignment
-ChatGPT-4.0,0.9996,1,0.7664
-ChatGPT-5,0.9995,1,0.7728
-Claude,0.9995,1,0.7679
-DeepSeek,0.9995,1,0.8416
-Gemini,0.9995,1,0.8562
-Gender Journey Chatbot Rubies,0.9995,1,0.8958
-HuggingChat,0.9995,1,0.8338
-JackAI,0.9996,1,0.757
-Llama-3,0.9995,1,0.8806
-Mistral AI,0.9995,1,0.8569
-Perplexity AI Chat,0.9995,1,0.8492
+ChatGPT-5.4,0.9996,1.0,0.6959
+Claude,0.9995,1.0,0.779
+DeepSeek,0.9995,1.0,0.7423
+Gemini,0.9995,1.0,0.7555
+Hugging Chat,0.9995,1.0,0.7829
+Llama-3,0.9996,1.0,0.6668
+Mistral AI,0.9995,1.0,0.6912
+Perplexity AI,0.9995,1.0,0.6764
+Overall Average,0.9995,1.0,0.7237

@@ -5,6 +5,12 @@
 
 """
 Evaluation Algorithm Module for the benchmark pipeline.
+
+Updated logic:
+1. Concatenates all human reference rows into one overall reference text.
+2. Concatenates all responses for each chatbot into one overall response text.
+3. Produces one evaluation row per chatbot (overall), not one row per response fragment.
+4. Identity and safety dimension outputs are also generated at the chatbot-overall level.
 """
 
 from __future__ import annotations
@@ -179,24 +185,68 @@ def inspect_model_labels(model_key):
 
 
 # =================================
+# TEXT CLEANING / AGGREGATION HELPERS
+# =================================
+def _clean_text(value: Any) -> str:
+    if pd.isna(value):
+        return ""
+    text = str(value).strip()
+    return re.sub(r"\s+", " ", text)
+
+
+def _concat_series_text(series: pd.Series) -> str:
+    texts = [_clean_text(x) for x in series.tolist()]
+    texts = [t for t in texts if t]
+    return " ".join(texts).strip()
+
+
+# =================================
 # REFERENCE / CHATBOT SPLIT
 # =================================
 def split_reference_and_chatbots(df):
-    reference_rows = df[
-        df[PLATFORM_COL].astype(str).str.strip().str.lower() == HUMAN_PLATFORM.lower()
+    """
+    Returns:
+        reference_text: concatenated text from all human rows
+        chatbot_df: one row per chatbot with concatenated overall response
+    """
+    working_df = df[[PLATFORM_COL, RESPONSE_COL]].copy()
+    working_df[PLATFORM_COL] = working_df[PLATFORM_COL].astype(str).str.strip()
+    working_df[RESPONSE_COL] = working_df[RESPONSE_COL].apply(_clean_text)
+
+    # --- aggregate all human rows into one overall reference ---
+    reference_rows = working_df[
+        working_df[PLATFORM_COL].str.lower() == HUMAN_PLATFORM.lower()
     ]
     if reference_rows.empty:
-        raise ValueError("No human reference row found in integrated responses file.")
+        raise ValueError("No human reference rows found in integrated responses file.")
 
-    reference_text = str(reference_rows.iloc[0][RESPONSE_COL])
+    reference_text = _concat_series_text(reference_rows[RESPONSE_COL])
+    if not reference_text:
+        raise ValueError("Human reference rows were found, but reference text is empty.")
 
-    chatbot_df = df[
-        df[PLATFORM_COL].astype(str).str.strip().str.lower() != HUMAN_PLATFORM.lower()
+    # --- aggregate all chatbot rows by platform ---
+    chatbot_rows = working_df[
+        working_df[PLATFORM_COL].str.lower() != HUMAN_PLATFORM.lower()
     ].copy()
-    chatbot_df.rename(
-        columns={PLATFORM_COL: "Chatbot", RESPONSE_COL: "Response"},
-        inplace=True,
+
+    if chatbot_rows.empty:
+        raise ValueError("No chatbot response rows found in integrated responses file.")
+
+    chatbot_df = (
+        chatbot_rows.groupby(PLATFORM_COL, as_index=False)[RESPONSE_COL]
+        .apply(_concat_series_text)
+        .rename(columns={
+            PLATFORM_COL: "Chatbot",
+            RESPONSE_COL: "Response",
+        })
     )
+
+    chatbot_df["Chatbot"] = chatbot_df["Chatbot"].astype(str).str.strip()
+    chatbot_df["Response"] = chatbot_df["Response"].apply(_clean_text)
+    chatbot_df = chatbot_df[chatbot_df["Response"] != ""].reset_index(drop=True)
+
+    if chatbot_df.empty:
+        raise ValueError("All chatbot responses became empty after aggregation.")
 
     return reference_text, chatbot_df
 
@@ -411,9 +461,47 @@ def evaluate_readability_score(generated_text):
 
 
 # =================================
+# OPTIONAL OVERALL SUMMARY ROW
+# =================================
+def append_overall_average_row(df: pd.DataFrame, label: str = "Overall Average") -> pd.DataFrame:
+    """
+    Appends a final row containing the mean of all numeric columns.
+    Non-numeric columns are filled with the provided label or blank.
+    """
+    if df.empty:
+        return df.copy()
+
+    summary_df = df.copy()
+    numeric_cols = summary_df.select_dtypes(include=[np.number]).columns.tolist()
+
+    if not numeric_cols:
+        return summary_df
+
+    overall_row = {}
+    for col in summary_df.columns:
+        if col == "Chatbot":
+            overall_row[col] = label
+        elif col == "Response":
+            overall_row[col] = ""
+        elif col in numeric_cols:
+            overall_row[col] = round(float(summary_df[col].mean()), 4)
+        else:
+            overall_row[col] = ""
+
+    return pd.concat([summary_df, pd.DataFrame([overall_row])], ignore_index=True)
+
+
+# =================================
 # MAIN EVALUATION PIPELINE
 # =================================
-def generate_evaluation_scores(integrated_responses):
+def generate_evaluation_scores(integrated_responses, include_overall_average: bool = False):
+    """
+    Generates one overall evaluation row per chatbot.
+
+    Args:
+        integrated_responses: DataFrame or CSV path
+        include_overall_average: whether to append a final mean row
+    """
     if not isinstance(integrated_responses, pd.DataFrame):
         integrated_responses = load_responses(integrated_responses)
 
@@ -445,13 +533,21 @@ def generate_evaluation_scores(integrated_responses):
             }
         )
 
-    return pd.DataFrame(evaluation_rows, columns=EVALUATION_FIELDNAMES)
+    df = pd.DataFrame(evaluation_rows, columns=EVALUATION_FIELDNAMES)
+
+    if include_overall_average:
+        df = append_overall_average_row(df)
+
+    return df
 
 
 # =================================
 # DIMENSION 1: IDENTITY / INCLUSIVITY
 # =================================
-def generate_identity_dimension_scores(integrated_responses):
+def generate_identity_dimension_scores(integrated_responses, include_overall_average: bool = False):
+    """
+    Generates one overall identity/inclusivity row per chatbot.
+    """
     if not isinstance(integrated_responses, pd.DataFrame):
         integrated_responses = load_responses(integrated_responses)
 
@@ -475,6 +571,10 @@ def generate_identity_dimension_scores(integrated_responses):
         )
 
     df = pd.DataFrame(rows, columns=IDENTITY_DIMENSION_COLUMNS)
+
+    if include_overall_average:
+        df = append_overall_average_row(df)
+
     save_sensitivity_to_csv(IDENTITY_DIMENSION_CSV_PATH, df)
     return df
 
@@ -482,7 +582,10 @@ def generate_identity_dimension_scores(integrated_responses):
 # =================================
 # DIMENSION 2: HIGH-STAKES / SAFETY
 # =================================
-def generate_safety_dimension_scores(integrated_responses):
+def generate_safety_dimension_scores(integrated_responses, include_overall_average: bool = False):
+    """
+    Generates one overall safety row per chatbot.
+    """
     if not isinstance(integrated_responses, pd.DataFrame):
         integrated_responses = load_responses(integrated_responses)
 
@@ -502,5 +605,9 @@ def generate_safety_dimension_scores(integrated_responses):
         )
 
     df = pd.DataFrame(rows, columns=SAFETY_DIMENSION_COLUMNS)
+
+    if include_overall_average:
+        df = append_overall_average_row(df)
+
     save_sensitivity_to_csv(SAFETY_DIMENSION_CSV_PATH, df)
     return df

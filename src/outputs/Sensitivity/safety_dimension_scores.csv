@@ -1,12 +1,10 @@
 Chatbot,Crisis-Support Reference Alignment
-ChatGPT-4.0,0.7213
-ChatGPT-5,0.7487
-Claude,0.6668
-DeepSeek,0.7122
-Gemini,0.6692
-Gender Journey Chatbot Rubies,0.723
-HuggingChat,0.7163
-JackAI,0.6997
-Llama-3,0.7505
-Mistral AI,0.7375
-Perplexity AI Chat,0.696
+ChatGPT-5.4,0.7531
+Claude,0.6706
+DeepSeek,0.74
+Gemini,0.7282
+Hugging Chat,0.7529
+Llama-3,0.7629
+Mistral AI,0.768
+Perplexity AI,0.7924
+Overall Average,0.746

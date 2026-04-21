@@ -42,9 +42,11 @@ from rouge_score import rouge_scorer
 RANDOM_SEED = 42
 EPSILON = 1e-8
 
+# transformers pipeline device
 # -1 = CPU
 #  0 = first visible accelerator device
-DEVICE = 0
+# Set to -1 if your environment does not have CUDA / MPS support for pipeline usage.
+DEVICE = -1
 
 TEXT_CLASSIFICATION_TASK = "text-classification"
 
@@ -54,16 +56,18 @@ TEXT_CLASSIFICATION_TASK = "text-classification"
 REFERENCE_DOCX_PATH = "src/data/Test Reference Text.docx"
 CHATBOT_DOCX_PATH = "src/data/Test Chatbot text.docx"
 
-OUTPUT_CSV_PATH = "src/outputs/evaluation_scores.csv"
-INTEGRATED_OUTPUT_CSV_PATH = "src/outputs/integrated_chatbot_responses.csv"
-CHATBOT_PROCESSED_CSV_PATH = "src/outputs/processed_chatbot_text.csv"
-REFERENCE_PROCESSED_CSV_PATH = "src/outputs/processed_reference_text.csv"
+OUTPUT_DIR = "src/outputs"
+PLOTS_DIR = os.path.join(OUTPUT_DIR, "Plots")
+SENSITIVITY_DIR = os.path.join(OUTPUT_DIR, "Sensitivity")
 
-PLOTS_DIR = "src/outputs/Plots"
-SENSITIVITY_DIR = "src/outputs/Sensitivity"
+OUTPUT_CSV_PATH = os.path.join(OUTPUT_DIR, "evaluation_scores.csv")
+INTEGRATED_OUTPUT_CSV_PATH = os.path.join(OUTPUT_DIR, "integrated_chatbot_responses.csv")
+CHATBOT_PROCESSED_CSV_PATH = os.path.join(OUTPUT_DIR, "processed_chatbot_text.csv")
+REFERENCE_PROCESSED_CSV_PATH = os.path.join(OUTPUT_DIR, "processed_reference_text.csv")
 
-IDENTITY_DIMENSION_CSV_PATH = "src/outputs/Sensitivity/identity_dimension_scores.csv"
-SAFETY_DIMENSION_CSV_PATH = "src/outputs/Sensitivity/safety_dimension_scores.csv"
+IDENTITY_DIMENSION_CSV_PATH = os.path.join(SENSITIVITY_DIR, "identity_dimension_scores.csv")
+SAFETY_DIMENSION_CSV_PATH = os.path.join(SENSITIVITY_DIR, "safety_dimension_scores.csv")
+OVERALL_SUMMARY_CSV_PATH = os.path.join(OUTPUT_DIR, "overall_summary_scores.csv")
 
 # =================================
 # DATA STRUCTURE DEFINITIONS
@@ -77,6 +81,8 @@ RESPONSE_COL = "Response"
 HUMAN_PLATFORM = "Human"
 RESPONSE_PREFIX = "Response from"
 SECTION_SUFFIX = ":"
+
+OVERALL_AVERAGE_LABEL = "Overall Average"
 
 EVALUATION_FIELDNAMES = [
     "Chatbot",
@@ -103,6 +109,18 @@ IDENTITY_DIMENSION_COLUMNS = [
 
 SAFETY_DIMENSION_COLUMNS = [
     "Chatbot",
+    "Crisis-Support Reference Alignment",
+]
+
+OVERALL_SUMMARY_COLUMNS = [
+    "Chatbot",
+    "ROUGE Semantic Overlap Score",
+    "METEOR Semantic Alignment Score",
+    "Negative-Tone Safety Score",
+    "Readability Score (Flesch Reading Ease)",
+    "Identity-Harm Floor Probability",
+    "Identity-Harm Floor Pass",
+    "Identity-Specific Reference Alignment",
     "Crisis-Support Reference Alignment",
 ]
 

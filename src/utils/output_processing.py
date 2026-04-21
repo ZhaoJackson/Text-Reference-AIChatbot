@@ -8,15 +8,11 @@ Output processing and plotting module for benchmark results.
 """
 
 from __future__ import annotations
-
 import os
 import re
-
 import matplotlib.pyplot as plt
 import pandas as pd
-
 from src.commonconst import *
-
 
 def _sanitize_filename(name: str) -> str:
     name = str(name).strip().lower()
@@ -29,6 +25,58 @@ def _ensure_dir(path: str):
     os.makedirs(path, exist_ok=True)
 
 
+def _remove_overall_average_row(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Removes the summary row if present.
+    """
+    if "Chatbot" not in df.columns:
+        return df.copy()
+
+    cleaned_df = df.copy()
+    cleaned_df["Chatbot"] = cleaned_df["Chatbot"].astype(str).str.strip()
+
+    return cleaned_df[
+        cleaned_df["Chatbot"].str.lower() != "overall average"
+    ].copy()
+
+
+def _coerce_metric_column(plot_df: pd.DataFrame, metric: str) -> pd.DataFrame:
+    """
+    Safely converts the metric column to numeric for plotting.
+    """
+    cleaned_df = plot_df.copy()
+    cleaned_df[metric] = pd.to_numeric(cleaned_df[metric], errors="coerce")
+    cleaned_df = cleaned_df.dropna(subset=[metric])
+    return cleaned_df
+
+def append_overall_average_row(
+    df: pd.DataFrame,
+    label: str = OVERALL_AVERAGE_LABEL,
+) -> pd.DataFrame:
+    """
+    Appends a final row containing the mean of all numeric columns.
+    Non-numeric columns are filled with the provided label or blank.
+    """
+    if df.empty:
+        return df.copy()
+
+    summary_df = df.copy()
+    numeric_cols = summary_df.select_dtypes(include="number").columns.tolist()
+
+    if not numeric_cols:
+        return summary_df
+
+    overall_row = {}
+    for col in summary_df.columns:
+        if col == "Chatbot":
+            overall_row[col] = label
+        elif col in numeric_cols:
+            overall_row[col] = round(float(summary_df[col].mean()), 4)
+        else:
+            overall_row[col] = ""
+
+    return pd.concat([summary_df, pd.DataFrame([overall_row])], ignore_index=True)
+
 def plot_metric_bar(df: pd.DataFrame, metric: str, output_dir: str):
     if metric not in df.columns:
         print(f"[WARN] Metric '{metric}' not found in dataframe.")
@@ -36,11 +84,17 @@ def plot_metric_bar(df: pd.DataFrame, metric: str, output_dir: str):
 
     _ensure_dir(output_dir)
 
-    plot_df = df[["Chatbot", metric]].copy()
-    plot_df = plot_df.dropna(subset=[metric])
+    plot_df = _remove_overall_average_row(df)
+
+    if "Chatbot" not in plot_df.columns:
+        print("[WARN] 'Chatbot' column not found in dataframe.")
+        return
+
+    plot_df = plot_df[["Chatbot", metric]].copy()
+    plot_df = _coerce_metric_column(plot_df, metric)
 
     if plot_df.empty:
-        print(f"[WARN] No non-null values found for '{metric}'.")
+        print(f"[WARN] No non-null numeric values found for '{metric}'.")
         return
 
     plt.figure(figsize=PLOT_FIGSIZE)
@@ -58,50 +112,108 @@ def plot_metric_bar(df: pd.DataFrame, metric: str, output_dir: str):
 def plot_identity_dimension(identity_df: pd.DataFrame):
     _ensure_dir(SENSITIVITY_DIR)
 
+    clean_df = _remove_overall_average_row(identity_df)
+
+    required_cols = [
+        "Chatbot",
+        "Identity-Harm Floor Probability",
+        "Identity-Specific Reference Alignment",
+        "Identity-Harm Floor Pass",
+    ]
+    missing_cols = [col for col in required_cols if col not in clean_df.columns]
+    if missing_cols:
+        print(f"[WARN] Missing identity columns: {missing_cols}")
+        return
+
     # Probability + reference alignment
-    plot_df = identity_df[
+    plot_df = clean_df[
         [
             "Chatbot",
             "Identity-Harm Floor Probability",
             "Identity-Specific Reference Alignment",
         ]
-    ].copy().set_index("Chatbot")
+    ].copy()
 
-    ax = plot_df.plot(kind="bar", figsize=PLOT_COMPARISON_FIGSIZE)
-    ax.set_title("Identity Dimension Comparison")
-    ax.set_ylabel("Score")
-    plt.xticks(rotation=ROTATION, ha="right")
-    plt.tight_layout()
-    plt.savefig(
-        os.path.join(SENSITIVITY_DIR, "identity_dimension_comparison.png"),
-        dpi=DPI,
+    plot_df["Identity-Harm Floor Probability"] = pd.to_numeric(
+        plot_df["Identity-Harm Floor Probability"], errors="coerce"
     )
-    plt.close()
+    plot_df["Identity-Specific Reference Alignment"] = pd.to_numeric(
+        plot_df["Identity-Specific Reference Alignment"], errors="coerce"
+    )
+    plot_df = plot_df.dropna(
+        subset=[
+            "Identity-Harm Floor Probability",
+            "Identity-Specific Reference Alignment",
+        ]
+    )
+
+    if not plot_df.empty:
+        plot_df = plot_df.set_index("Chatbot")
+        ax = plot_df.plot(kind="bar", figsize=PLOT_COMPARISON_FIGSIZE)
+        ax.set_title("Identity Dimension Comparison")
+        ax.set_ylabel("Score")
+        plt.xticks(rotation=ROTATION, ha="right")
+        plt.tight_layout()
+        plt.savefig(
+            os.path.join(SENSITIVITY_DIR, "identity_dimension_comparison.png"),
+            dpi=DPI,
+        )
+        plt.close()
+    else:
+        print("[WARN] Identity comparison plot skipped because the dataframe is empty.")
 
     # Pass/fail
-    pass_df = identity_df[["Chatbot", "Identity-Harm Floor Pass"]].copy()
-    plt.figure(figsize=PLOT_FIGSIZE)
-    plt.bar(pass_df["Chatbot"], pass_df["Identity-Harm Floor Pass"])
-    plt.xticks(rotation=ROTATION, ha="right")
-    plt.ylabel("Pass (1) / Fail (0)")
-    plt.title("Identity-Harm Floor Pass/Fail")
-    plt.tight_layout()
-    plt.savefig(
-        os.path.join(SENSITIVITY_DIR, "identity_harm_floor_passfail.png"),
-        dpi=DPI,
+    pass_df = clean_df[["Chatbot", "Identity-Harm Floor Pass"]].copy()
+    pass_df["Identity-Harm Floor Pass"] = pd.to_numeric(
+        pass_df["Identity-Harm Floor Pass"], errors="coerce"
     )
-    plt.close()
+    pass_df = pass_df.dropna(subset=["Identity-Harm Floor Pass"])
+
+    if not pass_df.empty:
+        plt.figure(figsize=PLOT_FIGSIZE)
+        plt.bar(pass_df["Chatbot"], pass_df["Identity-Harm Floor Pass"])
+        plt.xticks(rotation=ROTATION, ha="right")
+        plt.ylabel("Pass (1) / Fail (0)")
+        plt.title("Identity-Harm Floor Pass/Fail")
+        plt.tight_layout()
+        plt.savefig(
+            os.path.join(SENSITIVITY_DIR, "identity_harm_floor_passfail.png"),
+            dpi=DPI,
+        )
+        plt.close()
+    else:
+        print("[WARN] Identity pass/fail plot skipped because the dataframe is empty.")
 
 
 def plot_safety_dimension(safety_df: pd.DataFrame):
     _ensure_dir(SENSITIVITY_DIR)
 
-    plot_df = safety_df[
+    clean_df = _remove_overall_average_row(safety_df)
+
+    required_cols = [
+        "Chatbot",
+        "Crisis-Support Reference Alignment",
+    ]
+    missing_cols = [col for col in required_cols if col not in clean_df.columns]
+    if missing_cols:
+        print(f"[WARN] Missing safety columns: {missing_cols}")
+        return
+
+    plot_df = clean_df[
         [
             "Chatbot",
             "Crisis-Support Reference Alignment",
         ]
     ].copy()
+
+    plot_df["Crisis-Support Reference Alignment"] = pd.to_numeric(
+        plot_df["Crisis-Support Reference Alignment"], errors="coerce"
+    )
+    plot_df = plot_df.dropna(subset=["Crisis-Support Reference Alignment"])
+
+    if plot_df.empty:
+        print("[WARN] Safety comparison plot skipped because the dataframe is empty.")
+        return
 
     plt.figure(figsize=PLOT_FIGSIZE)
     plt.bar(plot_df["Chatbot"], plot_df["Crisis-Support Reference Alignment"])
@@ -114,6 +226,50 @@ def plot_safety_dimension(safety_df: pd.DataFrame):
         dpi=DPI,
     )
     plt.close()
+
+
+def build_overall_summary_table(
+    evaluation_df: pd.DataFrame,
+    identity_df: pd.DataFrame | None = None,
+    safety_df: pd.DataFrame | None = None,
+    include_overall_average: bool = False,
+) -> pd.DataFrame:
+    """
+    Merges all benchmark outputs into one summary table by Chatbot.
+
+    Behavior:
+    1. Removes the raw Response column for cleaner reporting.
+    2. Merges evaluation, identity, and safety outputs by Chatbot.
+    3. Reorders columns using OVERALL_SUMMARY_COLUMNS.
+    4. Optionally appends one final overall-average row.
+    """
+    summary_df = _remove_overall_average_row(evaluation_df).copy()
+
+    if "Response" in summary_df.columns:
+        summary_df = summary_df.drop(columns=["Response"])
+
+    if identity_df is not None:
+        identity_clean = _remove_overall_average_row(identity_df).copy()
+        summary_df = summary_df.merge(identity_clean, on="Chatbot", how="left")
+
+    if safety_df is not None:
+        safety_clean = _remove_overall_average_row(safety_df).copy()
+        summary_df = summary_df.merge(safety_clean, on="Chatbot", how="left")
+
+    existing_cols = [col for col in OVERALL_SUMMARY_COLUMNS if col in summary_df.columns]
+    remaining_cols = [col for col in summary_df.columns if col not in existing_cols]
+    summary_df = summary_df[existing_cols + remaining_cols]
+
+    if include_overall_average:
+        summary_df = append_overall_average_row(
+            summary_df,
+            label=OVERALL_AVERAGE_LABEL,
+        )
+
+    return summary_df
+
+def save_overall_summary_table(summary_df: pd.DataFrame, output_path: str):
+    summary_df.to_csv(output_path, index=False)
 
 
 def process_all_outputs(

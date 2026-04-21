@@ -23,7 +23,11 @@ from src.utils.evaluation_algo import (
     generate_safety_dimension_scores,
     save_evaluation_to_csv,
 )
-from src.utils.output_processing import process_all_outputs
+from src.utils.output_processing import (
+    process_all_outputs,
+    build_overall_summary_table,
+    save_overall_summary_table,
+)
 
 
 def main():
@@ -34,11 +38,6 @@ def main():
     chatbot_text = extract_text_from_docx(CHATBOT_DOCX_PATH)
 
     # Step 2: process and save all intermediate files
-    # NOTE:
-    # save_processed_files() already writes:
-    # - processed chatbot CSV
-    # - processed reference CSV
-    # - integrated responses CSV
     save_processed_files(
         chatbot_text=chatbot_text,
         reference_text=reference_text,
@@ -51,14 +50,32 @@ def main():
     integrated_responses = pd.read_csv(INTEGRATED_OUTPUT_CSV_PATH)
 
     # Step 4: primary continuous metrics
-    evaluation_df = generate_evaluation_scores(integrated_responses)
+    evaluation_df = generate_evaluation_scores(
+        integrated_responses,
+        include_overall_average=True,
+    )
     save_evaluation_to_csv(OUTPUT_CSV_PATH, evaluation_df)
 
     # Step 5: triangulated dimensions
-    identity_df = generate_identity_dimension_scores(integrated_responses)
-    safety_df = generate_safety_dimension_scores(integrated_responses)
+    identity_df = generate_identity_dimension_scores(
+        integrated_responses,
+        include_overall_average=True,
+    )
+    safety_df = generate_safety_dimension_scores(
+        integrated_responses,
+        include_overall_average=True,
+    )
 
-    # Step 6: plotting
+    # Step 6: merged overall summary
+    overall_summary_df = build_overall_summary_table(
+        evaluation_df=evaluation_df,
+        identity_df=identity_df,
+        safety_df=safety_df,
+        include_overall_average=True,
+    )
+    save_overall_summary_table(overall_summary_df, OVERALL_SUMMARY_CSV_PATH)
+
+    # Step 7: plotting
     process_all_outputs(evaluation_df, identity_df, safety_df)
 
     print("Benchmark evaluation complete.")
@@ -66,6 +83,7 @@ def main():
     print(f"Integrated responses saved to: {INTEGRATED_OUTPUT_CSV_PATH}")
     print(f"Identity dimension results saved to: {IDENTITY_DIMENSION_CSV_PATH}")
     print(f"Safety dimension results saved to: {SAFETY_DIMENSION_CSV_PATH}")
+    print(f"Overall summary saved to: {OVERALL_SUMMARY_CSV_PATH}")
     print(f"Plots saved to: {PLOTS_DIR}")
     print(f"Dimension plots saved to: {SENSITIVITY_DIR}")
 

@@ -157,10 +157,9 @@ IDENTITY_REFERENCE_TOPICS = [
 ]
 
 CRISIS_SUPPORT_REFERENCE_TOPICS = [
-    "Support System & Protective Factors",
+    "Nature of Thoughts, Plan, & Access to Means",
     "Safety Plan",
-    "Risk Re-Assessment",
-    "Risk Level Interpretation",
+    "Risk Re-Assessment"
 ]
 
 # =================================

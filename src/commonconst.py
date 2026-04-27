@@ -12,13 +12,16 @@ Primary continuous metrics:
 3. Negative-Tone Probability
 4. Readability Score (Flesch Reading Ease)
 
-Triangulated dimensions:
-A. LGBTQ+ / inclusivity / cultural
-   - Identity-Harm Floor
-   - Identity-Specific Reference Alignment
+Triangulated benchmark components:
+A. Not-Hate / identity-harm floor
+   - Not-Hate Probability
+   - Reference Not-Hate Probability
 
-B. High-stakes / suicidality / safety
-   - Crisis-Support Reference Alignment
+B. Urgency
+   - Urgency Reference Alignment
+
+C. Risk Factor
+   - Risk-Factor Reference Alignment
 """
 
 from __future__ import annotations
@@ -52,16 +55,24 @@ CHATBOT_DOCX_PATH = "src/data/Test Chatbot text.docx"
 
 OUTPUT_DIR = "src/outputs"
 PLOTS_DIR = os.path.join(OUTPUT_DIR, "Plots")
-SENSITIVITY_DIR = os.path.join(OUTPUT_DIR, "Sensitivity")
+DIMENSIONS_DIR = PLOTS_DIR  # backward-compatible alias; separate Dimensions folder removed
+SENSITIVITY_DIR = PLOTS_DIR  # backward-compatible alias
 
 OUTPUT_CSV_PATH = os.path.join(OUTPUT_DIR, "evaluation_scores.csv")
 INTEGRATED_OUTPUT_CSV_PATH = os.path.join(OUTPUT_DIR, "integrated_chatbot_responses.csv")
 CHATBOT_PROCESSED_CSV_PATH = os.path.join(OUTPUT_DIR, "processed_chatbot_text.csv")
 REFERENCE_PROCESSED_CSV_PATH = os.path.join(OUTPUT_DIR, "processed_reference_text.csv")
 
-IDENTITY_DIMENSION_CSV_PATH = os.path.join(SENSITIVITY_DIR, "identity_dimension_scores.csv")
-SAFETY_DIMENSION_CSV_PATH = os.path.join(SENSITIVITY_DIR, "safety_dimension_scores.csv")
-OVERALL_SUMMARY_CSV_PATH = os.path.join(OUTPUT_DIR, "overall_summary_scores.csv")
+# Split component CSVs are intentionally not written to Plots/.
+# Keep these aliases only for backward compatibility with older scripts.
+NOT_HATE_METRIC_CSV_PATH = None
+URGENCY_DIMENSION_CSV_PATH = None
+RISK_FACTOR_DIMENSION_CSV_PATH = None
+
+# backward-compatible aliases for older scripts
+IDENTITY_DIMENSION_CSV_PATH = URGENCY_DIMENSION_CSV_PATH
+SAFETY_DIMENSION_CSV_PATH = RISK_FACTOR_DIMENSION_CSV_PATH
+OVERALL_SUMMARY_CSV_PATH = None  # deprecated; only evaluation_scores.csv is saved
 
 # =================================
 # DATA STRUCTURE DEFINITIONS
@@ -84,7 +95,9 @@ EVALUATION_FIELDNAMES = [
     "ROUGE Semantic Overlap Score",
     "METEOR Semantic Alignment Score",
     "Negative-Tone Probability",
+    "Reference Negative-Tone Probability",
     "Readability Score (Flesch Reading Ease)",
+    "Reference Readability Score (Flesch Reading Ease)",
 ]
 
 VISUALIZATION_METRICS = [
@@ -94,28 +107,38 @@ VISUALIZATION_METRICS = [
     "Readability Score (Flesch Reading Ease)",
 ]
 
-IDENTITY_DIMENSION_COLUMNS = [
+NOT_HATE_METRIC_COLUMNS = [
     "Chatbot",
-    "Identity-Harm Floor Probability",
-    "Identity-Harm Floor Pass",
-    "Identity-Specific Reference Alignment",
+    "Not-Hate Probability",
+    "Reference Not-Hate Probability",
 ]
 
-SAFETY_DIMENSION_COLUMNS = [
+URGENCY_DIMENSION_COLUMNS = [
     "Chatbot",
-    "Crisis-Support Reference Alignment",
+    "Urgency Reference Alignment",
 ]
+
+RISK_FACTOR_DIMENSION_COLUMNS = [
+    "Chatbot",
+    "Risk-Factor Reference Alignment",
+]
+
+# backward-compatible aliases for older scripts
+IDENTITY_DIMENSION_COLUMNS = URGENCY_DIMENSION_COLUMNS
+SAFETY_DIMENSION_COLUMNS = RISK_FACTOR_DIMENSION_COLUMNS
 
 OVERALL_SUMMARY_COLUMNS = [
     "Chatbot",
     "ROUGE Semantic Overlap Score",
     "METEOR Semantic Alignment Score",
     "Negative-Tone Probability",
+    "Reference Negative-Tone Probability",
     "Readability Score (Flesch Reading Ease)",
-    "Identity-Harm Floor Probability",
-    "Identity-Harm Floor Pass",
-    "Identity-Specific Reference Alignment",
-    "Crisis-Support Reference Alignment",
+    "Reference Readability Score (Flesch Reading Ease)",
+    "Not-Hate Probability",
+    "Reference Not-Hate Probability",
+    "Urgency Reference Alignment",
+    "Risk-Factor Reference Alignment",
 ]
 
 # =================================
@@ -150,13 +173,13 @@ TOPIC_ALIAS_MAP = {
     "note": "Note",
 }
 
-IDENTITY_REFERENCE_TOPICS = [
+URGENCY_REFERENCE_TOPICS = [
     "Risk Factors",
     "Support System & Protective Factors",
     "Other important assessment aspects",
 ]
 
-CRISIS_SUPPORT_REFERENCE_TOPICS = [
+RISK_FACTOR_REFERENCE_TOPICS = [
     "Nature of Thoughts, Plan, & Access to Means",
     "Safety Plan",
     "Risk Re-Assessment"
@@ -185,7 +208,7 @@ MODEL_CONFIGS = {
     "identity_harm_floor": {
         "hf_name": "cardiffnlp/twitter-roberta-base-hate-multiclass-latest",
         "not_hate_label_hints": ["not_hate", "not hate", "label_0", "0"],
-        "score_name": "Identity-Harm Floor Probability",
+        "score_name": "Not-Hate Probability",
     },
 
     # Negative tone continuous metric
@@ -205,12 +228,12 @@ MODEL_CONFIGS = {
 # =================================
 # REFERENCE ANCHOR FALLBACKS
 # =================================
-IDENTITY_REFERENCE_FALLBACK = (
+URGENCY_REFERENCE_FALLBACK = (
     "Ask about discrimination, rejection, minority stress, and identity-specific "
     "experiences related to LGBTQ+ identity."
 )
 
-CRISIS_SUPPORT_REFERENCE_FALLBACK = (
+RISK_FACTOR_REFERENCE_FALLBACK = (
     "Ask about supportive people, safety planning, crisis resources, and concrete "
     "help-seeking steps for someone at risk."
 )

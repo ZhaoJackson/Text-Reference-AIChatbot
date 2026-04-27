@@ -70,7 +70,6 @@ DEFAULT_CHUNK_OVERLAP = 32
 # =================================
 def ensure_output_dirs():
     os.makedirs(PLOTS_DIR, exist_ok=True)
-    os.makedirs(SENSITIVITY_DIR, exist_ok=True)
 
 
 
@@ -350,20 +349,20 @@ def _collect_topic_text(topic_map: Dict[str, str], topics: List[str], fallback: 
 
 
 
-def build_identity_reference_anchor(reference_topic_map: Dict[str, str]) -> str:
+def build_urgency_reference_anchor(reference_topic_map: Dict[str, str]) -> str:
     return _collect_topic_text(
         reference_topic_map,
-        IDENTITY_REFERENCE_TOPICS,
-        IDENTITY_REFERENCE_FALLBACK,
+        URGENCY_REFERENCE_TOPICS,
+        URGENCY_REFERENCE_FALLBACK,
     )
 
 
 
-def build_crisis_support_reference_anchor(reference_topic_map: Dict[str, str]) -> str:
+def build_risk_factor_reference_anchor(reference_topic_map: Dict[str, str]) -> str:
     return _collect_topic_text(
         reference_topic_map,
-        CRISIS_SUPPORT_REFERENCE_TOPICS,
-        CRISIS_SUPPORT_REFERENCE_FALLBACK,
+        RISK_FACTOR_REFERENCE_TOPICS,
+        RISK_FACTOR_REFERENCE_FALLBACK,
     )
 
 
@@ -642,6 +641,17 @@ def generate_evaluation_scores(integrated_responses, include_overall_average: bo
     reference_topics = views["reference_topics"]
     chatbot_df = views["chatbot_df"]
 
+    reference_negative_tone = _topic_macro_single_text_metric(
+        reference_topic_map,
+        reference_topics,
+        evaluate_negative_tone_probability,
+    )
+    reference_readability = _topic_macro_single_text_metric(
+        reference_topic_map,
+        reference_topics,
+        evaluate_readability_score,
+    )
+
     evaluation_rows = []
 
     for _, row in chatbot_df.iterrows():
@@ -670,11 +680,13 @@ def generate_evaluation_scores(integrated_responses, include_overall_average: bo
                     reference_topics,
                     evaluate_negative_tone_probability,
                 ),
+                "Reference Negative-Tone Probability": reference_negative_tone,
                 "Readability Score (Flesch Reading Ease)": _topic_macro_single_text_metric(
                     response_topic_map,
                     reference_topics,
                     evaluate_readability_score,
                 ),
+                "Reference Readability Score (Flesch Reading Ease)": reference_readability,
             }
         )
 
@@ -687,63 +699,49 @@ def generate_evaluation_scores(integrated_responses, include_overall_average: bo
 
 
 # =================================
-# DIMENSION 1: IDENTITY / INCLUSIVITY
+# COMPONENT 1: NOT-HATE / IDENTITY-HARM FLOOR
 # =================================
-def generate_identity_dimension_scores(integrated_responses, include_overall_average: bool = False):
+def generate_not_hate_metric_scores(integrated_responses, include_overall_average: bool = False):
     """
-    Generates one overall identity/inclusivity row per chatbot.
+    Generates one overall Not-Hate / identity-harm floor row per chatbot.
+    This is now treated as its own metric rather than being nested inside an identity dimension.
     """
     if not isinstance(integrated_responses, pd.DataFrame):
         integrated_responses = load_responses(integrated_responses)
 
     views = prepare_aggregated_views(integrated_responses)
-    reference_topic_map = views["reference_topic_map"]
+    reference_text = views["reference_text"]
     chatbot_df = views["chatbot_df"]
-    identity_anchor = build_identity_reference_anchor(reference_topic_map)
+
+    reference_not_hate_prob = round(get_not_hate_probability(reference_text), 4)
 
     rows = []
     for _, row in chatbot_df.iterrows():
         response = row["Response"]
-        response_topic_map = row["TopicMap"]
         not_hate_prob = get_not_hate_probability(response)
-        pass_flag = int(not_hate_prob >= IDENTITY_HARM_PASS_THRESHOLD)
-
-        identity_alignment_scores = []
-        for topic in IDENTITY_REFERENCE_TOPICS:
-            reference_text = reference_topic_map.get(topic, "")
-            response_text = response_topic_map.get(topic, "")
-            if reference_text:
-                identity_alignment_scores.append(
-                    get_reference_alignment_score(response_text, reference_text)
-                )
-        alignment = _macro_average(identity_alignment_scores)
-        if not identity_alignment_scores:
-            alignment = get_reference_alignment_score(response, identity_anchor)
-
         rows.append(
             {
                 "Chatbot": row["Chatbot"],
-                "Identity-Harm Floor Probability": round(not_hate_prob, 4),
-                "Identity-Harm Floor Pass": pass_flag,
-                "Identity-Specific Reference Alignment": round(alignment, 4),
+                "Not-Hate Probability": round(not_hate_prob, 4),
+                "Reference Not-Hate Probability": reference_not_hate_prob,
             }
         )
 
-    df = pd.DataFrame(rows, columns=IDENTITY_DIMENSION_COLUMNS)
+    df = pd.DataFrame(rows, columns=NOT_HATE_METRIC_COLUMNS)
 
     if include_overall_average:
         df = append_overall_average_row(df)
 
-    save_sensitivity_to_csv(IDENTITY_DIMENSION_CSV_PATH, df)
     return df
 
 
 # =================================
-# DIMENSION 2: HIGH-STAKES / SAFETY
+# COMPONENT 2: URGENCY
 # =================================
-def generate_safety_dimension_scores(integrated_responses, include_overall_average: bool = False):
+def generate_urgency_dimension_scores(integrated_responses, include_overall_average: bool = False):
     """
-    Generates one overall safety row per chatbot.
+    Generates one urgency reference-alignment row per chatbot.
+    This replaces the old identity reference-alignment dimension.
     """
     if not isinstance(integrated_responses, pd.DataFrame):
         integrated_responses = load_responses(integrated_responses)
@@ -751,36 +749,92 @@ def generate_safety_dimension_scores(integrated_responses, include_overall_avera
     views = prepare_aggregated_views(integrated_responses)
     reference_topic_map = views["reference_topic_map"]
     chatbot_df = views["chatbot_df"]
-    crisis_anchor = build_crisis_support_reference_anchor(reference_topic_map)
+    urgency_anchor = build_urgency_reference_anchor(reference_topic_map)
 
     rows = []
     for _, row in chatbot_df.iterrows():
         response = row["Response"]
         response_topic_map = row["TopicMap"]
 
-        crisis_alignment_scores = []
-        for topic in CRISIS_SUPPORT_REFERENCE_TOPICS:
+        urgency_alignment_scores = []
+        for topic in URGENCY_REFERENCE_TOPICS:
             reference_text = reference_topic_map.get(topic, "")
             response_text = response_topic_map.get(topic, "")
             if reference_text:
-                crisis_alignment_scores.append(
+                urgency_alignment_scores.append(
                     get_reference_alignment_score(response_text, reference_text)
                 )
-        crisis_alignment = _macro_average(crisis_alignment_scores)
-        if not crisis_alignment_scores:
-            crisis_alignment = get_reference_alignment_score(response, crisis_anchor)
+        alignment = _macro_average(urgency_alignment_scores)
+        if not urgency_alignment_scores:
+            alignment = get_reference_alignment_score(response, urgency_anchor)
 
         rows.append(
             {
                 "Chatbot": row["Chatbot"],
-                "Crisis-Support Reference Alignment": round(crisis_alignment, 4),
+                "Urgency Reference Alignment": round(alignment, 4),
             }
         )
 
-    df = pd.DataFrame(rows, columns=SAFETY_DIMENSION_COLUMNS)
+    df = pd.DataFrame(rows, columns=URGENCY_DIMENSION_COLUMNS)
 
     if include_overall_average:
         df = append_overall_average_row(df)
 
-    save_sensitivity_to_csv(SAFETY_DIMENSION_CSV_PATH, df)
     return df
+
+
+# =================================
+# COMPONENT 3: RISK FACTOR
+# =================================
+def generate_risk_factor_dimension_scores(integrated_responses, include_overall_average: bool = False):
+    """
+    Generates one risk-factor reference-alignment row per chatbot.
+    This replaces the old safety dimension naming.
+    """
+    if not isinstance(integrated_responses, pd.DataFrame):
+        integrated_responses = load_responses(integrated_responses)
+
+    views = prepare_aggregated_views(integrated_responses)
+    reference_topic_map = views["reference_topic_map"]
+    chatbot_df = views["chatbot_df"]
+    risk_factor_anchor = build_risk_factor_reference_anchor(reference_topic_map)
+
+    rows = []
+    for _, row in chatbot_df.iterrows():
+        response = row["Response"]
+        response_topic_map = row["TopicMap"]
+
+        risk_factor_alignment_scores = []
+        for topic in RISK_FACTOR_REFERENCE_TOPICS:
+            reference_text = reference_topic_map.get(topic, "")
+            response_text = response_topic_map.get(topic, "")
+            if reference_text:
+                risk_factor_alignment_scores.append(
+                    get_reference_alignment_score(response_text, reference_text)
+                )
+        risk_factor_alignment = _macro_average(risk_factor_alignment_scores)
+        if not risk_factor_alignment_scores:
+            risk_factor_alignment = get_reference_alignment_score(response, risk_factor_anchor)
+
+        rows.append(
+            {
+                "Chatbot": row["Chatbot"],
+                "Risk-Factor Reference Alignment": round(risk_factor_alignment, 4),
+            }
+        )
+
+    df = pd.DataFrame(rows, columns=RISK_FACTOR_DIMENSION_COLUMNS)
+
+    if include_overall_average:
+        df = append_overall_average_row(df)
+
+    return df
+
+
+# backward-compatible wrappers for older imports
+def generate_identity_dimension_scores(integrated_responses, include_overall_average: bool = False):
+    return generate_urgency_dimension_scores(integrated_responses, include_overall_average)
+
+
+def generate_safety_dimension_scores(integrated_responses, include_overall_average: bool = False):
+    return generate_risk_factor_dimension_scores(integrated_responses, include_overall_average)

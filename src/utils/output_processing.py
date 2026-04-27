@@ -19,6 +19,17 @@ def _sanitize_filename(name: str) -> str:
 def _ensure_dir(path: str):
     os.makedirs(path, exist_ok=True)
 
+def _cleanup_plots_directory():
+    """Keep Plots/ figure-only by removing stale CSVs and deprecated pass/fail figures."""
+    _ensure_dir(PLOTS_DIR)
+    for filename in os.listdir(PLOTS_DIR):
+        lower_name = filename.lower()
+        if lower_name.endswith(".csv") or lower_name == "not_hate_passfail.png":
+            try:
+                os.remove(os.path.join(PLOTS_DIR, filename))
+            except OSError:
+                pass
+
 def _remove_overall_average_row(df: pd.DataFrame) -> pd.DataFrame:
     if "Chatbot" not in df.columns:
         return df.copy()
@@ -74,8 +85,27 @@ def plot_metric_bar(df: pd.DataFrame, metric: str, output_dir: str):
         print(f"[WARN] No non-null numeric values found for '{metric}'.")
         return
 
+    reference_metric_map = {
+        "Negative-Tone Probability": "Reference Negative-Tone Probability",
+        "Readability Score (Flesch Reading Ease)": "Reference Readability Score (Flesch Reading Ease)",
+    }
+    reference_value = None
+    reference_col = reference_metric_map.get(metric)
+    if reference_col and reference_col in df.columns:
+        reference_values = pd.to_numeric(df[reference_col], errors="coerce").dropna()
+        if not reference_values.empty:
+            reference_value = float(reference_values.iloc[0])
+
     plt.figure(figsize=PLOT_FIGSIZE)
     plt.bar(plot_df["Chatbot"], plot_df[metric])
+    if reference_value is not None:
+        plt.axhline(
+            y=reference_value,
+            linestyle="--",
+            linewidth=1.8,
+            label=f"Human reference = {reference_value:.4f}",
+        )
+        plt.legend()
     plt.xticks(rotation=ROTATION, ha="right")
     plt.ylabel(metric)
     plt.title(metric)
@@ -86,117 +116,141 @@ def plot_metric_bar(df: pd.DataFrame, metric: str, output_dir: str):
     plt.close()
 
 
-def plot_identity_dimension(identity_df: pd.DataFrame):
-    _ensure_dir(SENSITIVITY_DIR)
+def plot_not_hate_metric(not_hate_df: pd.DataFrame):
+    _ensure_dir(PLOTS_DIR)
+    clean_df = _remove_overall_average_row(not_hate_df)
 
-    clean_df = _remove_overall_average_row(identity_df)
-
-    required_cols = [
-        "Chatbot",
-        "Identity-Harm Floor Probability",
-        "Identity-Specific Reference Alignment",
-        "Identity-Harm Floor Pass",
-    ]
+    required_cols = ["Chatbot", "Not-Hate Probability"]
     missing_cols = [col for col in required_cols if col not in clean_df.columns]
     if missing_cols:
-        print(f"[WARN] Missing identity columns: {missing_cols}")
+        print(f"[WARN] Missing Not-Hate columns: {missing_cols}")
         return
-    plot_df = clean_df[
-        [
-            "Chatbot",
-            "Identity-Harm Floor Probability",
-            "Identity-Specific Reference Alignment",
-        ]
-    ].copy()
-    plot_df["Identity-Harm Floor Probability"] = pd.to_numeric(
-        plot_df["Identity-Harm Floor Probability"], errors="coerce"
+
+    plot_df = clean_df[["Chatbot", "Not-Hate Probability"]].copy()
+    plot_df["Not-Hate Probability"] = pd.to_numeric(
+        plot_df["Not-Hate Probability"], errors="coerce"
     )
-    plot_df["Identity-Specific Reference Alignment"] = pd.to_numeric(
-        plot_df["Identity-Specific Reference Alignment"], errors="coerce"
-    )
-    plot_df = plot_df.dropna(
-        subset=[
-            "Identity-Harm Floor Probability",
-            "Identity-Specific Reference Alignment",
-        ]
-    )
+    plot_df = plot_df.dropna(subset=["Not-Hate Probability"])
+
+    reference_value = None
+    if "Reference Not-Hate Probability" in not_hate_df.columns:
+        reference_values = pd.to_numeric(
+            not_hate_df["Reference Not-Hate Probability"], errors="coerce"
+        ).dropna()
+        if not reference_values.empty:
+            reference_value = float(reference_values.iloc[0])
+
     if not plot_df.empty:
-        plot_df = plot_df.set_index("Chatbot")
-        ax = plot_df.plot(kind="bar", figsize=PLOT_COMPARISON_FIGSIZE)
-        ax.set_title("Identity Dimension Comparison")
-        ax.set_ylabel("Score")
-        plt.xticks(rotation=ROTATION, ha="right")
-        plt.tight_layout()
-        plt.savefig(
-            os.path.join(SENSITIVITY_DIR, "identity_dimension_comparison.png"),
-            dpi=DPI,
-        )
-        plt.close()
-    else:
-        print("[WARN] Identity comparison plot skipped because the dataframe is empty.")
-
-    pass_df = clean_df[["Chatbot", "Identity-Harm Floor Pass"]].copy()
-    pass_df["Identity-Harm Floor Pass"] = pd.to_numeric(
-        pass_df["Identity-Harm Floor Pass"], errors="coerce"
-    )
-    pass_df = pass_df.dropna(subset=["Identity-Harm Floor Pass"])
-
-    if not pass_df.empty:
         plt.figure(figsize=PLOT_FIGSIZE)
-        plt.bar(pass_df["Chatbot"], pass_df["Identity-Harm Floor Pass"])
+        plt.bar(plot_df["Chatbot"], plot_df["Not-Hate Probability"])
+        if reference_value is not None:
+            plt.axhline(
+                y=reference_value,
+                linestyle="--",
+                linewidth=1.8,
+                label=f"Human reference = {reference_value:.4f}",
+            )
+            plt.legend()
         plt.xticks(rotation=ROTATION, ha="right")
-        plt.ylabel("Pass (1) / Fail (0)")
-        plt.title("Identity-Harm Floor Pass/Fail")
+        plt.ylabel("Not-Hate Probability")
+        plt.title("Not-Hate Metric")
         plt.tight_layout()
-        plt.savefig(
-            os.path.join(SENSITIVITY_DIR, "identity_harm_floor_passfail.png"),
-            dpi=DPI,
-        )
+        plt.savefig(os.path.join(PLOTS_DIR, "not_hate_metric.png"), dpi=DPI)
         plt.close()
     else:
-        print("[WARN] Identity pass/fail plot skipped because the dataframe is empty.")
+        print("[WARN] Not-Hate metric plot skipped because the dataframe is empty.")
 
-def plot_safety_dimension(safety_df: pd.DataFrame):
-    _ensure_dir(SENSITIVITY_DIR)
 
-    clean_df = _remove_overall_average_row(safety_df)
+def plot_urgency_dimension(urgency_df: pd.DataFrame):
+    _ensure_dir(PLOTS_DIR)
+    clean_df = _remove_overall_average_row(urgency_df)
 
-    required_cols = ["Chatbot", "Crisis-Support Reference Alignment"]
+    required_cols = ["Chatbot", "Urgency Reference Alignment"]
     missing_cols = [col for col in required_cols if col not in clean_df.columns]
     if missing_cols:
-        print(f"[WARN] Missing safety columns: {missing_cols}")
+        print(f"[WARN] Missing urgency columns: {missing_cols}")
         return
-    plot_df = clean_df[["Chatbot", "Crisis-Support Reference Alignment"]].copy()
-    plot_df["Crisis-Support Reference Alignment"] = pd.to_numeric(
-        plot_df["Crisis-Support Reference Alignment"], errors="coerce"
+
+    plot_df = clean_df[["Chatbot", "Urgency Reference Alignment"]].copy()
+    plot_df["Urgency Reference Alignment"] = pd.to_numeric(
+        plot_df["Urgency Reference Alignment"], errors="coerce"
     )
-    plot_df = plot_df.dropna(subset=["Crisis-Support Reference Alignment"])
+    plot_df = plot_df.dropna(subset=["Urgency Reference Alignment"])
 
     if plot_df.empty:
-        print("[WARN] Safety comparison plot skipped because the dataframe is empty.")
+        print("[WARN] Urgency plot skipped because the dataframe is empty.")
         return
+
     plt.figure(figsize=PLOT_FIGSIZE)
-    plt.bar(plot_df["Chatbot"], plot_df["Crisis-Support Reference Alignment"])
+    plt.bar(plot_df["Chatbot"], plot_df["Urgency Reference Alignment"])
     plt.xticks(rotation=ROTATION, ha="right")
-    plt.ylabel("Crisis-Support Reference Alignment")
-    plt.title("Safety Dimension Comparison")
+    plt.ylabel("Urgency Reference Alignment")
+    plt.title("Urgency Dimension")
     plt.tight_layout()
-    plt.savefig(
-        os.path.join(SENSITIVITY_DIR, "safety_dimension_comparison.png"),
-        dpi=DPI,
-    )
+    plt.savefig(os.path.join(PLOTS_DIR, "urgency_dimension.png"), dpi=DPI)
     plt.close()
 
-def build_overall_summary_table(evaluation_df: pd.DataFrame, identity_df: pd.DataFrame | None = None, safety_df: pd.DataFrame | None = None, include_overall_average: bool = False) -> pd.DataFrame:
+
+def plot_risk_factor_dimension(risk_factor_df: pd.DataFrame):
+    _ensure_dir(PLOTS_DIR)
+    clean_df = _remove_overall_average_row(risk_factor_df)
+
+    required_cols = ["Chatbot", "Risk-Factor Reference Alignment"]
+    missing_cols = [col for col in required_cols if col not in clean_df.columns]
+    if missing_cols:
+        print(f"[WARN] Missing risk-factor columns: {missing_cols}")
+        return
+
+    plot_df = clean_df[["Chatbot", "Risk-Factor Reference Alignment"]].copy()
+    plot_df["Risk-Factor Reference Alignment"] = pd.to_numeric(
+        plot_df["Risk-Factor Reference Alignment"], errors="coerce"
+    )
+    plot_df = plot_df.dropna(subset=["Risk-Factor Reference Alignment"])
+
+    if plot_df.empty:
+        print("[WARN] Risk-factor plot skipped because the dataframe is empty.")
+        return
+
+    plt.figure(figsize=PLOT_FIGSIZE)
+    plt.bar(plot_df["Chatbot"], plot_df["Risk-Factor Reference Alignment"])
+    plt.xticks(rotation=ROTATION, ha="right")
+    plt.ylabel("Risk-Factor Reference Alignment")
+    plt.title("Risk Factor Dimension")
+    plt.tight_layout()
+    plt.savefig(os.path.join(PLOTS_DIR, "risk_factor_dimension.png"), dpi=DPI)
+    plt.close()
+
+
+# backward-compatible wrappers
+def plot_identity_dimension(identity_df: pd.DataFrame):
+    plot_urgency_dimension(identity_df)
+
+
+def plot_safety_dimension(safety_df: pd.DataFrame):
+    plot_risk_factor_dimension(safety_df)
+
+def build_overall_summary_table(
+    evaluation_df: pd.DataFrame,
+    not_hate_df: pd.DataFrame | None = None,
+    urgency_df: pd.DataFrame | None = None,
+    risk_factor_df: pd.DataFrame | None = None,
+    identity_df: pd.DataFrame | None = None,
+    safety_df: pd.DataFrame | None = None,
+    include_overall_average: bool = False,
+) -> pd.DataFrame:
     summary_df = _remove_overall_average_row(evaluation_df).copy()
     if "Response" in summary_df.columns:
         summary_df = summary_df.drop(columns=["Response"])
-    if identity_df is not None:
-        identity_clean = _remove_overall_average_row(identity_df).copy()
-        summary_df = summary_df.merge(identity_clean, on="Chatbot", how="left")
-    if safety_df is not None:
-        safety_clean = _remove_overall_average_row(safety_df).copy()
-        summary_df = summary_df.merge(safety_clean, on="Chatbot", how="left")
+    # Accept both the new split dataframes and older argument names.
+    if urgency_df is None and identity_df is not None:
+        urgency_df = identity_df
+    if risk_factor_df is None and safety_df is not None:
+        risk_factor_df = safety_df
+
+    for component_df in [not_hate_df, urgency_df, risk_factor_df]:
+        if component_df is not None:
+            component_clean = _remove_overall_average_row(component_df).copy()
+            summary_df = summary_df.merge(component_clean, on="Chatbot", how="left")
     existing_cols = [col for col in OVERALL_SUMMARY_COLUMNS if col in summary_df.columns]
     remaining_cols = [col for col in summary_df.columns if col not in existing_cols]
     summary_df = summary_df[existing_cols + remaining_cols]
@@ -210,12 +264,27 @@ def build_overall_summary_table(evaluation_df: pd.DataFrame, identity_df: pd.Dat
 def save_overall_summary_table(summary_df: pd.DataFrame, output_path: str):
     summary_df.to_csv(output_path, index=False)
 
-def process_all_outputs(evaluation_df: pd.DataFrame, identity_df: pd.DataFrame | None = None, safety_df: pd.DataFrame | None = None):
-    _ensure_dir(PLOTS_DIR)
-    _ensure_dir(SENSITIVITY_DIR)
+def process_all_outputs(
+    evaluation_df: pd.DataFrame,
+    not_hate_df: pd.DataFrame | None = None,
+    urgency_df: pd.DataFrame | None = None,
+    risk_factor_df: pd.DataFrame | None = None,
+    identity_df: pd.DataFrame | None = None,
+    safety_df: pd.DataFrame | None = None,
+):
+    _cleanup_plots_directory()
     for metric in VISUALIZATION_METRICS:
         plot_metric_bar(evaluation_df, metric, PLOTS_DIR)
-    if identity_df is not None:
-        plot_identity_dimension(identity_df)
-    if safety_df is not None:
-        plot_safety_dimension(safety_df)
+
+    # Accept both new split arguments and old positional identity/safety calls.
+    if urgency_df is None and identity_df is not None:
+        urgency_df = identity_df
+    if risk_factor_df is None and safety_df is not None:
+        risk_factor_df = safety_df
+
+    if not_hate_df is not None:
+        plot_not_hate_metric(not_hate_df)
+    if urgency_df is not None:
+        plot_urgency_dimension(urgency_df)
+    if risk_factor_df is not None:
+        plot_risk_factor_dimension(risk_factor_df)

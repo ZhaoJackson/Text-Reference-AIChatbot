@@ -35,8 +35,8 @@ def append_component_scores_to_evaluation(
 ) -> pd.DataFrame:
     """
     Appends the three split benchmark scores to the main evaluation_scores.csv table.
-    This keeps Non-Hateful Language Probability, Crisis-Response Reference Similarity, and Risk-Assessment Reference Similarity scores in the same CSV as the
-    primary ROUGE/METEOR/sentiment-based risk-language/readability metrics.
+    This keeps classifier-based and reference-similarity scores in the same CSV as the
+    primary ROUGE/METEOR/negative sentiment/readability metrics.
     """
     merged_df = evaluation_df.copy()
     component_dfs = [not_hate_df, urgency_df, risk_factor_df]

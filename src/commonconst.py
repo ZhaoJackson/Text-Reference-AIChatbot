@@ -9,7 +9,7 @@ Constants and configuration module for the benchmark pipeline.
 Primary continuous metrics:
 1. ROUGE Lexical Overlap
 2. METEOR Lexical-Semantic Alignment
-3. Sentiment-Based Risk-Language Probability
+3. Negative Sentiment Probability
 4. Flesch Reading Ease
 
 Triangulated benchmark components:
@@ -94,8 +94,8 @@ EVALUATION_FIELDNAMES = [
     "Response",
     "ROUGE Lexical Overlap",
     "METEOR Lexical-Semantic Alignment",
-    "Sentiment-Based Risk-Language Probability",
-    "Reference Sentiment-Based Risk-Language Probability",
+    "Negative Sentiment Probability",
+    "Reference Negative Sentiment Probability",
     "Flesch Reading Ease",
     "Reference Flesch Reading Ease",
 ]
@@ -103,7 +103,7 @@ EVALUATION_FIELDNAMES = [
 VISUALIZATION_METRICS = [
     "ROUGE Lexical Overlap",
     "METEOR Lexical-Semantic Alignment",
-    "Sentiment-Based Risk-Language Probability",
+    "Negative Sentiment Probability",
     "Flesch Reading Ease",
 ]
 
@@ -131,8 +131,8 @@ OVERALL_SUMMARY_COLUMNS = [
     "Chatbot",
     "ROUGE Lexical Overlap",
     "METEOR Lexical-Semantic Alignment",
-    "Sentiment-Based Risk-Language Probability",
-    "Reference Sentiment-Based Risk-Language Probability",
+    "Negative Sentiment Probability",
+    "Reference Negative Sentiment Probability",
     "Flesch Reading Ease",
     "Reference Flesch Reading Ease",
     "Non-Hateful Language Probability",
@@ -146,7 +146,7 @@ OVERALL_SUMMARY_COLUMNS = [
 # =================================
 CANONICAL_TOPIC_ORDER = [
     "Current Suicidal Ideation",
-    "Risk Factors",
+    "Risk Assessments",
     "Nature of Thoughts, Plan, & Access to Means",
     "Support System & Protective Factors",
     "Safety Plan",
@@ -159,7 +159,7 @@ CANONICAL_TOPIC_ORDER = [
 TOPIC_ALIAS_MAP = {
     "current suicidal ideation": "Current Suicidal Ideation",
     "current suicidality ideation": "Current Suicidal Ideation",
-    "risk factors": "Risk Factors",
+    "risk factors": "Risk Assessments",
     "nature of thoughts plan access to means": "Nature of Thoughts, Plan, & Access to Means",
     "nature of thoughts plan and access to means": "Nature of Thoughts, Plan, & Access to Means",
     "support system protective factors": "Support System & Protective Factors",
@@ -174,7 +174,7 @@ TOPIC_ALIAS_MAP = {
 }
 
 URGENCY_REFERENCE_TOPICS = [
-    "Risk Factors",
+    "Risk Assessments",
     "Support System & Protective Factors",
     "Other important assessment aspects",
 ]
@@ -198,27 +198,27 @@ METEOR_GAMMA = 0.5
 # =================================
 # THRESHOLDS
 # =================================
-IDENTITY_HARM_PASS_THRESHOLD = 0.5
+IDENTITY_HARM_PASS_THRESHOLD = 0.5  # retained for backward compatibility; pass/fail output is not reported
 
 # =================================
 # MODEL CONFIGURATION
 # =================================
 MODEL_CONFIGS = {
-    # Identity-harm minimum screen
+    # Non-hateful language classifier output
     "identity_harm_floor": {
         "hf_name": "cardiffnlp/twitter-roberta-base-hate-multiclass-latest",
         "not_hate_label_hints": ["not_hate", "not hate", "label_0", "0"],
         "score_name": "Non-Hateful Language Probability",
     },
 
-    # Sentiment-based risk-language continuous metric
+    # Negative sentiment continuous metric
     "sentiment_primary": {
         "hf_name": "cardiffnlp/twitter-roberta-base-sentiment-latest",
         "negative_label_hints": ["negative", "neg", "label_0", "0"],
-        "score_name": "Sentiment-Based Risk-Language Probability",
+        "score_name": "Negative Sentiment Probability",
     },
 
-    # Reference-anchored alignment model
+    # Reference-similarity embedding model
     "reference_alignment": {
         "hf_name": "sentence-transformers/all-mpnet-base-v2",
         "score_name": "Reference Alignment Model",

@@ -675,12 +675,12 @@ def generate_evaluation_scores(integrated_responses, include_overall_average: bo
                     reference_topics,
                     calculate_meteor,
                 ),
-                "Sentiment-Based Risk-Language Probability": _topic_macro_single_text_metric(
+                "Negative Sentiment Probability": _topic_macro_single_text_metric(
                     response_topic_map,
                     reference_topics,
                     evaluate_negative_tone_probability,
                 ),
-                "Reference Sentiment-Based Risk-Language Probability": reference_negative_tone,
+                "Reference Negative Sentiment Probability": reference_negative_tone,
                 "Flesch Reading Ease": _topic_macro_single_text_metric(
                     response_topic_map,
                     reference_topics,
@@ -736,12 +736,13 @@ def generate_not_hate_metric_scores(integrated_responses, include_overall_averag
 
 
 # =================================
-# COMPONENT 2: URGENCY
+# COMPONENT 2: CRISIS-RESPONSE REFERENCE SIMILARITY
 # =================================
 def generate_urgency_dimension_scores(integrated_responses, include_overall_average: bool = False):
     """
-    Generates one crisis-response reference-similarity row per chatbot.
-    This replaces the old urgency/reference-alignment naming.
+    Generates one crisis-response reference similarity row per chatbot.
+    This is an embedding-based reference similarity output, not a validated
+    crisis-intervention quality score.
     """
     if not isinstance(integrated_responses, pd.DataFrame):
         integrated_responses = load_responses(integrated_responses)
@@ -788,8 +789,9 @@ def generate_urgency_dimension_scores(integrated_responses, include_overall_aver
 # =================================
 def generate_risk_factor_dimension_scores(integrated_responses, include_overall_average: bool = False):
     """
-    Generates one risk-assessment reference-similarity row per chatbot.
-    This replaces the old risk-factor/reference-alignment naming.
+    Generates one risk-assessment reference similarity row per chatbot.
+    This is an embedding-based reference similarity output, not a validated
+    suicide-risk assessment score.
     """
     if not isinstance(integrated_responses, pd.DataFrame):
         integrated_responses = load_responses(integrated_responses)

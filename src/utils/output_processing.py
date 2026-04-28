@@ -86,7 +86,7 @@ def plot_metric_bar(df: pd.DataFrame, metric: str, output_dir: str):
         return
 
     reference_metric_map = {
-        "Sentiment-Based Risk-Language Probability": "Reference Sentiment-Based Risk-Language Probability",
+        "Negative Sentiment Probability": "Reference Negative Sentiment Probability",
         "Flesch Reading Ease": "Reference Flesch Reading Ease",
     }
     reference_value = None
@@ -123,7 +123,7 @@ def plot_not_hate_metric(not_hate_df: pd.DataFrame):
     required_cols = ["Chatbot", "Non-Hateful Language Probability"]
     missing_cols = [col for col in required_cols if col not in clean_df.columns]
     if missing_cols:
-        print(f"[WARN] Missing non-hateful language probability columns: {missing_cols}")
+        print(f"[WARN] Missing Non-Hateful Language columns: {missing_cols}")
         return
 
     plot_df = clean_df[["Chatbot", "Non-Hateful Language Probability"]].copy()
@@ -158,7 +158,7 @@ def plot_not_hate_metric(not_hate_df: pd.DataFrame):
         plt.savefig(os.path.join(PLOTS_DIR, "non_hateful_language_probability.png"), dpi=DPI)
         plt.close()
     else:
-        print("[WARN] non-hateful language probability plot skipped because the dataframe is empty.")
+        print("[WARN] Non-Hateful Language Probability plot skipped because the dataframe is empty.")
 
 
 def plot_urgency_dimension(urgency_df: pd.DataFrame):
@@ -178,7 +178,7 @@ def plot_urgency_dimension(urgency_df: pd.DataFrame):
     plot_df = plot_df.dropna(subset=["Crisis-Response Reference Similarity"])
 
     if plot_df.empty:
-        print("[WARN] crisis-response reference similarity plot skipped because the dataframe is empty.")
+        print("[WARN] Urgency plot skipped because the dataframe is empty.")
         return
 
     plt.figure(figsize=PLOT_FIGSIZE)
@@ -198,7 +198,7 @@ def plot_risk_factor_dimension(risk_factor_df: pd.DataFrame):
     required_cols = ["Chatbot", "Risk-Assessment Reference Similarity"]
     missing_cols = [col for col in required_cols if col not in clean_df.columns]
     if missing_cols:
-        print(f"[WARN] Missing risk-factor columns: {missing_cols}")
+        print(f"[WARN] Missing risk-assessment columns: {missing_cols}")
         return
 
     plot_df = clean_df[["Chatbot", "Risk-Assessment Reference Similarity"]].copy()
@@ -208,7 +208,7 @@ def plot_risk_factor_dimension(risk_factor_df: pd.DataFrame):
     plot_df = plot_df.dropna(subset=["Risk-Assessment Reference Similarity"])
 
     if plot_df.empty:
-        print("[WARN] risk-assessment reference similarity plot skipped because the dataframe is empty.")
+        print("[WARN] Risk-factor plot skipped because the dataframe is empty.")
         return
 
     plt.figure(figsize=PLOT_FIGSIZE)

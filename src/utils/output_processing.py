@@ -86,8 +86,8 @@ def plot_metric_bar(df: pd.DataFrame, metric: str, output_dir: str):
         return
 
     reference_metric_map = {
-        "Negative-Tone Probability": "Reference Negative-Tone Probability",
-        "Readability Score (Flesch Reading Ease)": "Reference Readability Score (Flesch Reading Ease)",
+        "Sentiment-Based Risk-Language Probability": "Reference Sentiment-Based Risk-Language Probability",
+        "Flesch Reading Ease": "Reference Flesch Reading Ease",
     }
     reference_value = None
     reference_col = reference_metric_map.get(metric)
@@ -120,29 +120,29 @@ def plot_not_hate_metric(not_hate_df: pd.DataFrame):
     _ensure_dir(PLOTS_DIR)
     clean_df = _remove_overall_average_row(not_hate_df)
 
-    required_cols = ["Chatbot", "Not-Hate Probability"]
+    required_cols = ["Chatbot", "Non-Hateful Language Probability"]
     missing_cols = [col for col in required_cols if col not in clean_df.columns]
     if missing_cols:
-        print(f"[WARN] Missing Not-Hate columns: {missing_cols}")
+        print(f"[WARN] Missing non-hateful language probability columns: {missing_cols}")
         return
 
-    plot_df = clean_df[["Chatbot", "Not-Hate Probability"]].copy()
-    plot_df["Not-Hate Probability"] = pd.to_numeric(
-        plot_df["Not-Hate Probability"], errors="coerce"
+    plot_df = clean_df[["Chatbot", "Non-Hateful Language Probability"]].copy()
+    plot_df["Non-Hateful Language Probability"] = pd.to_numeric(
+        plot_df["Non-Hateful Language Probability"], errors="coerce"
     )
-    plot_df = plot_df.dropna(subset=["Not-Hate Probability"])
+    plot_df = plot_df.dropna(subset=["Non-Hateful Language Probability"])
 
     reference_value = None
-    if "Reference Not-Hate Probability" in not_hate_df.columns:
+    if "Reference Non-Hateful Language Probability" in not_hate_df.columns:
         reference_values = pd.to_numeric(
-            not_hate_df["Reference Not-Hate Probability"], errors="coerce"
+            not_hate_df["Reference Non-Hateful Language Probability"], errors="coerce"
         ).dropna()
         if not reference_values.empty:
             reference_value = float(reference_values.iloc[0])
 
     if not plot_df.empty:
         plt.figure(figsize=PLOT_FIGSIZE)
-        plt.bar(plot_df["Chatbot"], plot_df["Not-Hate Probability"])
+        plt.bar(plot_df["Chatbot"], plot_df["Non-Hateful Language Probability"])
         if reference_value is not None:
             plt.axhline(
                 y=reference_value,
@@ -152,42 +152,42 @@ def plot_not_hate_metric(not_hate_df: pd.DataFrame):
             )
             plt.legend()
         plt.xticks(rotation=ROTATION, ha="right")
-        plt.ylabel("Not-Hate Probability")
-        plt.title("Not-Hate Metric")
+        plt.ylabel("Non-Hateful Language Probability")
+        plt.title("Non-Hateful Language Probability")
         plt.tight_layout()
-        plt.savefig(os.path.join(PLOTS_DIR, "not_hate_metric.png"), dpi=DPI)
+        plt.savefig(os.path.join(PLOTS_DIR, "non_hateful_language_probability.png"), dpi=DPI)
         plt.close()
     else:
-        print("[WARN] Not-Hate metric plot skipped because the dataframe is empty.")
+        print("[WARN] non-hateful language probability plot skipped because the dataframe is empty.")
 
 
 def plot_urgency_dimension(urgency_df: pd.DataFrame):
     _ensure_dir(PLOTS_DIR)
     clean_df = _remove_overall_average_row(urgency_df)
 
-    required_cols = ["Chatbot", "Urgency Reference Alignment"]
+    required_cols = ["Chatbot", "Crisis-Response Reference Similarity"]
     missing_cols = [col for col in required_cols if col not in clean_df.columns]
     if missing_cols:
         print(f"[WARN] Missing urgency columns: {missing_cols}")
         return
 
-    plot_df = clean_df[["Chatbot", "Urgency Reference Alignment"]].copy()
-    plot_df["Urgency Reference Alignment"] = pd.to_numeric(
-        plot_df["Urgency Reference Alignment"], errors="coerce"
+    plot_df = clean_df[["Chatbot", "Crisis-Response Reference Similarity"]].copy()
+    plot_df["Crisis-Response Reference Similarity"] = pd.to_numeric(
+        plot_df["Crisis-Response Reference Similarity"], errors="coerce"
     )
-    plot_df = plot_df.dropna(subset=["Urgency Reference Alignment"])
+    plot_df = plot_df.dropna(subset=["Crisis-Response Reference Similarity"])
 
     if plot_df.empty:
-        print("[WARN] Urgency plot skipped because the dataframe is empty.")
+        print("[WARN] crisis-response reference similarity plot skipped because the dataframe is empty.")
         return
 
     plt.figure(figsize=PLOT_FIGSIZE)
-    plt.bar(plot_df["Chatbot"], plot_df["Urgency Reference Alignment"])
+    plt.bar(plot_df["Chatbot"], plot_df["Crisis-Response Reference Similarity"])
     plt.xticks(rotation=ROTATION, ha="right")
-    plt.ylabel("Urgency Reference Alignment")
-    plt.title("Urgency Dimension")
+    plt.ylabel("Crisis-Response Reference Similarity")
+    plt.title("Crisis-Response Reference Similarity")
     plt.tight_layout()
-    plt.savefig(os.path.join(PLOTS_DIR, "urgency_dimension.png"), dpi=DPI)
+    plt.savefig(os.path.join(PLOTS_DIR, "crisis_response_reference_similarity.png"), dpi=DPI)
     plt.close()
 
 
@@ -195,29 +195,29 @@ def plot_risk_factor_dimension(risk_factor_df: pd.DataFrame):
     _ensure_dir(PLOTS_DIR)
     clean_df = _remove_overall_average_row(risk_factor_df)
 
-    required_cols = ["Chatbot", "Risk-Factor Reference Alignment"]
+    required_cols = ["Chatbot", "Risk-Assessment Reference Similarity"]
     missing_cols = [col for col in required_cols if col not in clean_df.columns]
     if missing_cols:
         print(f"[WARN] Missing risk-factor columns: {missing_cols}")
         return
 
-    plot_df = clean_df[["Chatbot", "Risk-Factor Reference Alignment"]].copy()
-    plot_df["Risk-Factor Reference Alignment"] = pd.to_numeric(
-        plot_df["Risk-Factor Reference Alignment"], errors="coerce"
+    plot_df = clean_df[["Chatbot", "Risk-Assessment Reference Similarity"]].copy()
+    plot_df["Risk-Assessment Reference Similarity"] = pd.to_numeric(
+        plot_df["Risk-Assessment Reference Similarity"], errors="coerce"
     )
-    plot_df = plot_df.dropna(subset=["Risk-Factor Reference Alignment"])
+    plot_df = plot_df.dropna(subset=["Risk-Assessment Reference Similarity"])
 
     if plot_df.empty:
-        print("[WARN] Risk-factor plot skipped because the dataframe is empty.")
+        print("[WARN] risk-assessment reference similarity plot skipped because the dataframe is empty.")
         return
 
     plt.figure(figsize=PLOT_FIGSIZE)
-    plt.bar(plot_df["Chatbot"], plot_df["Risk-Factor Reference Alignment"])
+    plt.bar(plot_df["Chatbot"], plot_df["Risk-Assessment Reference Similarity"])
     plt.xticks(rotation=ROTATION, ha="right")
-    plt.ylabel("Risk-Factor Reference Alignment")
-    plt.title("Risk Factor Dimension")
+    plt.ylabel("Risk-Assessment Reference Similarity")
+    plt.title("Risk-Assessment Reference Similarity")
     plt.tight_layout()
-    plt.savefig(os.path.join(PLOTS_DIR, "risk_factor_dimension.png"), dpi=DPI)
+    plt.savefig(os.path.join(PLOTS_DIR, "risk_assessment_reference_similarity.png"), dpi=DPI)
     plt.close()
 
 

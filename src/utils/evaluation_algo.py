@@ -663,30 +663,30 @@ def generate_evaluation_scores(integrated_responses, include_overall_average: bo
             {
                 "Chatbot": chatbot_name,
                 "Response": chatbot_response,
-                "ROUGE Semantic Overlap Score": _topic_macro_metric(
+                "ROUGE Lexical Overlap": _topic_macro_metric(
                     reference_topic_map,
                     response_topic_map,
                     reference_topics,
                     calculate_average_rouge,
                 ),
-                "METEOR Semantic Alignment Score": _topic_macro_metric(
+                "METEOR Lexical-Semantic Alignment": _topic_macro_metric(
                     reference_topic_map,
                     response_topic_map,
                     reference_topics,
                     calculate_meteor,
                 ),
-                "Negative-Tone Probability": _topic_macro_single_text_metric(
+                "Sentiment-Based Risk-Language Probability": _topic_macro_single_text_metric(
                     response_topic_map,
                     reference_topics,
                     evaluate_negative_tone_probability,
                 ),
-                "Reference Negative-Tone Probability": reference_negative_tone,
-                "Readability Score (Flesch Reading Ease)": _topic_macro_single_text_metric(
+                "Reference Sentiment-Based Risk-Language Probability": reference_negative_tone,
+                "Flesch Reading Ease": _topic_macro_single_text_metric(
                     response_topic_map,
                     reference_topics,
                     evaluate_readability_score,
                 ),
-                "Reference Readability Score (Flesch Reading Ease)": reference_readability,
+                "Reference Flesch Reading Ease": reference_readability,
             }
         )
 
@@ -703,7 +703,7 @@ def generate_evaluation_scores(integrated_responses, include_overall_average: bo
 # =================================
 def generate_not_hate_metric_scores(integrated_responses, include_overall_average: bool = False):
     """
-    Generates one overall Not-Hate / identity-harm floor row per chatbot.
+    Generates one overall Non-hateful language probability row per chatbot.
     This is now treated as its own metric rather than being nested inside an identity dimension.
     """
     if not isinstance(integrated_responses, pd.DataFrame):
@@ -722,8 +722,8 @@ def generate_not_hate_metric_scores(integrated_responses, include_overall_averag
         rows.append(
             {
                 "Chatbot": row["Chatbot"],
-                "Not-Hate Probability": round(not_hate_prob, 4),
-                "Reference Not-Hate Probability": reference_not_hate_prob,
+                "Non-Hateful Language Probability": round(not_hate_prob, 4),
+                "Reference Non-Hateful Language Probability": reference_not_hate_prob,
             }
         )
 
@@ -740,8 +740,8 @@ def generate_not_hate_metric_scores(integrated_responses, include_overall_averag
 # =================================
 def generate_urgency_dimension_scores(integrated_responses, include_overall_average: bool = False):
     """
-    Generates one urgency reference-alignment row per chatbot.
-    This replaces the old identity reference-alignment dimension.
+    Generates one crisis-response reference-similarity row per chatbot.
+    This replaces the old urgency/reference-alignment naming.
     """
     if not isinstance(integrated_responses, pd.DataFrame):
         integrated_responses = load_responses(integrated_responses)
@@ -771,7 +771,7 @@ def generate_urgency_dimension_scores(integrated_responses, include_overall_aver
         rows.append(
             {
                 "Chatbot": row["Chatbot"],
-                "Urgency Reference Alignment": round(alignment, 4),
+                "Crisis-Response Reference Similarity": round(alignment, 4),
             }
         )
 
@@ -788,8 +788,8 @@ def generate_urgency_dimension_scores(integrated_responses, include_overall_aver
 # =================================
 def generate_risk_factor_dimension_scores(integrated_responses, include_overall_average: bool = False):
     """
-    Generates one risk-factor reference-alignment row per chatbot.
-    This replaces the old safety dimension naming.
+    Generates one risk-assessment reference-similarity row per chatbot.
+    This replaces the old risk-factor/reference-alignment naming.
     """
     if not isinstance(integrated_responses, pd.DataFrame):
         integrated_responses = load_responses(integrated_responses)
@@ -819,7 +819,7 @@ def generate_risk_factor_dimension_scores(integrated_responses, include_overall_
         rows.append(
             {
                 "Chatbot": row["Chatbot"],
-                "Risk-Factor Reference Alignment": round(risk_factor_alignment, 4),
+                "Risk-Assessment Reference Similarity": round(risk_factor_alignment, 4),
             }
         )
 

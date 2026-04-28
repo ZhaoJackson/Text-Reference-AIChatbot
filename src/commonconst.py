@@ -7,21 +7,21 @@
 Constants and configuration module for the benchmark pipeline.
 
 Primary continuous metrics:
-1. ROUGE Semantic Overlap Score
-2. METEOR Semantic Alignment Score
-3. Negative-Tone Probability
-4. Readability Score (Flesch Reading Ease)
+1. ROUGE Lexical Overlap
+2. METEOR Lexical-Semantic Alignment
+3. Sentiment-Based Risk-Language Probability
+4. Flesch Reading Ease
 
 Triangulated benchmark components:
-A. Not-Hate / identity-harm floor
-   - Not-Hate Probability
-   - Reference Not-Hate Probability
+A. Non-hateful language probability
+   - Non-Hateful Language Probability
+   - Reference Non-Hateful Language Probability
 
-B. Urgency
-   - Urgency Reference Alignment
+B. Crisis-response reference similarity
+   - Crisis-Response Reference Similarity
 
-C. Risk Factor
-   - Risk-Factor Reference Alignment
+C. Risk-assessment reference similarity
+   - Risk-Assessment Reference Similarity
 """
 
 from __future__ import annotations
@@ -92,35 +92,35 @@ OVERALL_AVERAGE_LABEL = "Overall Average"
 EVALUATION_FIELDNAMES = [
     "Chatbot",
     "Response",
-    "ROUGE Semantic Overlap Score",
-    "METEOR Semantic Alignment Score",
-    "Negative-Tone Probability",
-    "Reference Negative-Tone Probability",
-    "Readability Score (Flesch Reading Ease)",
-    "Reference Readability Score (Flesch Reading Ease)",
+    "ROUGE Lexical Overlap",
+    "METEOR Lexical-Semantic Alignment",
+    "Sentiment-Based Risk-Language Probability",
+    "Reference Sentiment-Based Risk-Language Probability",
+    "Flesch Reading Ease",
+    "Reference Flesch Reading Ease",
 ]
 
 VISUALIZATION_METRICS = [
-    "ROUGE Semantic Overlap Score",
-    "METEOR Semantic Alignment Score",
-    "Negative-Tone Probability",
-    "Readability Score (Flesch Reading Ease)",
+    "ROUGE Lexical Overlap",
+    "METEOR Lexical-Semantic Alignment",
+    "Sentiment-Based Risk-Language Probability",
+    "Flesch Reading Ease",
 ]
 
 NOT_HATE_METRIC_COLUMNS = [
     "Chatbot",
-    "Not-Hate Probability",
-    "Reference Not-Hate Probability",
+    "Non-Hateful Language Probability",
+    "Reference Non-Hateful Language Probability",
 ]
 
 URGENCY_DIMENSION_COLUMNS = [
     "Chatbot",
-    "Urgency Reference Alignment",
+    "Crisis-Response Reference Similarity",
 ]
 
 RISK_FACTOR_DIMENSION_COLUMNS = [
     "Chatbot",
-    "Risk-Factor Reference Alignment",
+    "Risk-Assessment Reference Similarity",
 ]
 
 # backward-compatible aliases for older scripts
@@ -129,16 +129,16 @@ SAFETY_DIMENSION_COLUMNS = RISK_FACTOR_DIMENSION_COLUMNS
 
 OVERALL_SUMMARY_COLUMNS = [
     "Chatbot",
-    "ROUGE Semantic Overlap Score",
-    "METEOR Semantic Alignment Score",
-    "Negative-Tone Probability",
-    "Reference Negative-Tone Probability",
-    "Readability Score (Flesch Reading Ease)",
-    "Reference Readability Score (Flesch Reading Ease)",
-    "Not-Hate Probability",
-    "Reference Not-Hate Probability",
-    "Urgency Reference Alignment",
-    "Risk-Factor Reference Alignment",
+    "ROUGE Lexical Overlap",
+    "METEOR Lexical-Semantic Alignment",
+    "Sentiment-Based Risk-Language Probability",
+    "Reference Sentiment-Based Risk-Language Probability",
+    "Flesch Reading Ease",
+    "Reference Flesch Reading Ease",
+    "Non-Hateful Language Probability",
+    "Reference Non-Hateful Language Probability",
+    "Crisis-Response Reference Similarity",
+    "Risk-Assessment Reference Similarity",
 ]
 
 # =================================
@@ -208,14 +208,14 @@ MODEL_CONFIGS = {
     "identity_harm_floor": {
         "hf_name": "cardiffnlp/twitter-roberta-base-hate-multiclass-latest",
         "not_hate_label_hints": ["not_hate", "not hate", "label_0", "0"],
-        "score_name": "Not-Hate Probability",
+        "score_name": "Non-Hateful Language Probability",
     },
 
-    # Negative tone continuous metric
+    # Sentiment-based risk-language continuous metric
     "sentiment_primary": {
         "hf_name": "cardiffnlp/twitter-roberta-base-sentiment-latest",
         "negative_label_hints": ["negative", "neg", "label_0", "0"],
-        "score_name": "Negative-Tone Probability",
+        "score_name": "Sentiment-Based Risk-Language Probability",
     },
 
     # Reference-anchored alignment model

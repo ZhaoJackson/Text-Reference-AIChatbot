@@ -69,7 +69,9 @@ DEFAULT_CHUNK_OVERLAP = 32
 # DIRECTORY / IO HELPERS
 # =================================
 def ensure_output_dirs():
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     os.makedirs(PLOTS_DIR, exist_ok=True)
+    os.makedirs(ROBUSTNESS_DIR, exist_ok=True)
 
 
 

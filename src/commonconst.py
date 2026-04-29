@@ -63,6 +63,77 @@ INTEGRATED_OUTPUT_CSV_PATH = os.path.join(OUTPUT_DIR, "integrated_chatbot_respon
 CHATBOT_PROCESSED_CSV_PATH = os.path.join(OUTPUT_DIR, "processed_chatbot_text.csv")
 REFERENCE_PROCESSED_CSV_PATH = os.path.join(OUTPUT_DIR, "processed_reference_text.csv")
 
+
+# =================================
+# ROBUSTNESS / SENSITIVITY OUTPUTS
+# =================================
+ROBUSTNESS_DIR = os.path.join(OUTPUT_DIR, "Robustness")
+
+CORRELATION_MATRIX_CSV_PATH = os.path.join(
+    ROBUSTNESS_DIR,
+    "metric_spearman_correlation_matrix.csv",
+)
+
+LEAVE_ONE_TOPIC_OUT_CSV_PATH = os.path.join(
+    ROBUSTNESS_DIR,
+    "leave_one_topic_out_sensitivity.csv",
+)
+
+LEAVE_ONE_TOPIC_OUT_NORMALIZED_CSV_PATH = os.path.join(
+    ROBUSTNESS_DIR,
+    "leave_one_topic_out_sensitivity_normalized.csv",
+)
+
+CORRELATION_MATRIX_PLOT_PATH = os.path.join(
+    PLOTS_DIR,
+    "metric_spearman_correlation_matrix.png",
+)
+
+LEAVE_ONE_TOPIC_OUT_PLOT_PATH = os.path.join(
+    PLOTS_DIR,
+    "leave_one_topic_out_mean_absolute_delta.png",
+)
+
+LEAVE_ONE_TOPIC_OUT_NORMALIZED_PLOT_PATH = os.path.join(
+    PLOTS_DIR,
+    "leave_one_topic_out_normalized_mean_absolute_delta.png",
+)
+
+ROBUSTNESS_METRICS = [
+    "ROUGE Lexical Overlap",
+    "METEOR Lexical-Semantic Alignment",
+    "Negative Sentiment Probability",
+    "Flesch Reading Ease",
+    "Non-Hateful Language Probability",
+    "Crisis-Response Reference Similarity",
+    "Risk-Assessment Reference Similarity",
+]
+
+# Sensitivity/inferential robustness checks are limited to the formal assessment topics below.
+# The scope note/disclaimer topic is intentionally excluded.
+ROBUSTNESS_TOPIC_ORDER = [
+    "Current Suicidal Ideation",
+    "Risk Assessments",
+    "Nature of Thoughts, Plan, & Access to Means",
+    "Support System & Protective Factors",
+    "Safety Plan",
+    "Risk Re-Assessment",
+    "Risk Level Interpretation",
+    "Other important assessment aspects",
+]
+
+# Used only for normalized sensitivity summaries/plots.
+# Correlations are scale-invariant, but leave-one-topic-out deltas need comparable ranges.
+METRIC_NORMALIZATION_DENOMINATORS = {
+    "ROUGE Lexical Overlap": 1.0,
+    "METEOR Lexical-Semantic Alignment": 1.0,
+    "Negative Sentiment Probability": 1.0,
+    "Flesch Reading Ease": 100.0,
+    "Non-Hateful Language Probability": 1.0,
+    "Crisis-Response Reference Similarity": 1.0,
+    "Risk-Assessment Reference Similarity": 1.0,
+}
+
 # Split component CSVs are intentionally not written to Plots/.
 # Keep these aliases only for backward compatibility with older scripts.
 NOT_HATE_METRIC_CSV_PATH = None

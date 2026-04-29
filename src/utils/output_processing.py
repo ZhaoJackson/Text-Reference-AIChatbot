@@ -264,8 +264,323 @@ def build_overall_summary_table(
 def save_overall_summary_table(summary_df: pd.DataFrame, output_path: str):
     summary_df.to_csv(output_path, index=False)
 
+
+# =================================
+# ROBUSTNESS / SENSITIVITY ANALYSES
+# =================================
+
+def _get_available_robustness_metrics(df: pd.DataFrame) -> list[str]:
+    available = []
+    for metric in ROBUSTNESS_METRICS:
+        if metric in df.columns:
+            values = pd.to_numeric(df[metric], errors="coerce")
+            if values.notna().sum() >= 2:
+                available.append(metric)
+    return available
+
+
+def _normalize_metric_value(metric: str, value: float) -> float:
+    denominator = METRIC_NORMALIZATION_DENOMINATORS.get(metric, 1.0)
+    if denominator in [0, None] or pd.isna(value):
+        return np.nan
+    return float(value) / float(denominator)
+
+
+def generate_metric_correlation_matrix(evaluation_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Descriptive Spearman correlation matrix across benchmark metrics.
+
+    This output is a robustness/diagnostic analysis rather than confirmatory
+    null-hypothesis inference because the number of evaluated chatbot systems is small.
+    """
+    clean_df = _remove_overall_average_row(evaluation_df)
+    metric_cols = _get_available_robustness_metrics(clean_df)
+
+    if len(metric_cols) < 2:
+        print("[WARN] Correlation matrix skipped: fewer than two numeric metrics available.")
+        return pd.DataFrame()
+
+    metric_df = clean_df[metric_cols].apply(pd.to_numeric, errors="coerce")
+    return metric_df.corr(method="spearman").round(4)
+
+
+def save_metric_correlation_matrix(corr_df: pd.DataFrame):
+    if corr_df.empty:
+        return
+    _ensure_dir(ROBUSTNESS_DIR)
+    corr_df.to_csv(CORRELATION_MATRIX_CSV_PATH)
+
+
+def plot_metric_correlation_matrix(corr_df: pd.DataFrame):
+    if corr_df.empty:
+        return
+
+    _ensure_dir(PLOTS_DIR)
+    labels = corr_df.columns.tolist()
+    matrix = corr_df.to_numpy(dtype=float)
+
+    plt.figure(figsize=(max(9, len(labels) * 1.2), max(7, len(labels) * 1.0)))
+    plt.imshow(matrix, vmin=-1, vmax=1)
+    plt.colorbar(label="Spearman correlation")
+    plt.xticks(range(len(labels)), labels, rotation=45, ha="right")
+    plt.yticks(range(len(labels)), labels)
+
+    for i in range(len(labels)):
+        for j in range(len(labels)):
+            value = matrix[i, j]
+            if np.isfinite(value):
+                plt.text(j, i, f"{value:.2f}", ha="center", va="center", fontsize=8)
+
+    plt.title("Spearman Correlation Across Benchmark Metrics")
+    plt.tight_layout()
+    plt.savefig(CORRELATION_MATRIX_PLOT_PATH, dpi=DPI)
+    plt.close()
+
+
+def _merge_component_scores_for_robustness(
+    evaluation_df: pd.DataFrame,
+    not_hate_df: pd.DataFrame,
+    urgency_df: pd.DataFrame,
+    risk_factor_df: pd.DataFrame,
+) -> pd.DataFrame:
+    merged_df = evaluation_df.copy()
+    for component_df in [not_hate_df, urgency_df, risk_factor_df]:
+        if component_df is None or component_df.empty:
+            continue
+        clean_component_df = component_df.copy()
+        merge_cols = [col for col in clean_component_df.columns if col != "Response"]
+        clean_component_df = clean_component_df[merge_cols]
+        duplicate_cols = [
+            col for col in clean_component_df.columns
+            if col != "Chatbot" and col in merged_df.columns
+        ]
+        if duplicate_cols:
+            merged_df = merged_df.drop(columns=duplicate_cols)
+        merged_df = merged_df.merge(clean_component_df, on="Chatbot", how="left")
+    return merged_df
+
+
+def _compute_full_metric_table_from_integrated(integrated_responses: pd.DataFrame) -> pd.DataFrame:
+    """Recompute all benchmark metrics from a filtered integrated response table."""
+    from src.utils.evaluation_algo import (
+        generate_evaluation_scores,
+        generate_not_hate_metric_scores,
+        generate_urgency_dimension_scores,
+        generate_risk_factor_dimension_scores,
+    )
+
+    evaluation_df = generate_evaluation_scores(
+        integrated_responses,
+        include_overall_average=False,
+    )
+    not_hate_df = generate_not_hate_metric_scores(
+        integrated_responses,
+        include_overall_average=False,
+    )
+    urgency_df = generate_urgency_dimension_scores(
+        integrated_responses,
+        include_overall_average=False,
+    )
+    risk_factor_df = generate_risk_factor_dimension_scores(
+        integrated_responses,
+        include_overall_average=False,
+    )
+
+    return _merge_component_scores_for_robustness(
+        evaluation_df=evaluation_df,
+        not_hate_df=not_hate_df,
+        urgency_df=urgency_df,
+        risk_factor_df=risk_factor_df,
+    )
+
+
+def _topic_sort_key_for_robustness(topic: str):
+    if topic in ROBUSTNESS_TOPIC_ORDER:
+        return (ROBUSTNESS_TOPIC_ORDER.index(topic), topic)
+    if topic in CANONICAL_TOPIC_ORDER:
+        return (len(ROBUSTNESS_TOPIC_ORDER) + CANONICAL_TOPIC_ORDER.index(topic), topic)
+    return (len(ROBUSTNESS_TOPIC_ORDER) + len(CANONICAL_TOPIC_ORDER) + 1, topic)
+
+
+def generate_leave_one_topic_out_sensitivity(
+    integrated_responses: pd.DataFrame,
+    full_evaluation_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Leave-one-topic-out sensitivity analysis limited to formal assessment topics.
+
+    The scope note/disclaimer topic is intentionally excluded. Flesch Reading Ease
+    is also normalized to a 0-1 scale for cross-metric delta summaries.
+    """
+    if integrated_responses is None or integrated_responses.empty:
+        print("[WARN] Leave-one-topic-out sensitivity skipped: integrated responses not provided.")
+        return pd.DataFrame()
+
+    from src.utils.evaluation_algo import standardize_topic
+
+    working_df = integrated_responses.copy()
+    if TOPIC_COL not in working_df.columns:
+        print("[WARN] Leave-one-topic-out sensitivity skipped: topic column not found.")
+        return pd.DataFrame()
+
+    working_df[TOPIC_COL] = working_df[TOPIC_COL].apply(standardize_topic)
+
+    available_reference_topics = set(
+        working_df.loc[
+            working_df[PLATFORM_COL].astype(str).str.lower() == HUMAN_PLATFORM.lower(),
+            TOPIC_COL,
+        ]
+        .dropna()
+        .astype(str)
+        .tolist()
+    )
+
+    target_topics = [topic for topic in ROBUSTNESS_TOPIC_ORDER if topic in available_reference_topics]
+    target_topics = sorted(target_topics, key=_topic_sort_key_for_robustness)
+
+    full_df = _remove_overall_average_row(full_evaluation_df).copy()
+    metric_cols = _get_available_robustness_metrics(full_df)
+
+    if not target_topics:
+        print("[WARN] Leave-one-topic-out sensitivity skipped: none of the target topics were found.")
+        return pd.DataFrame()
+    if not metric_cols:
+        print("[WARN] Leave-one-topic-out sensitivity skipped: no robustness metrics found.")
+        return pd.DataFrame()
+
+    full_df = full_df.set_index("Chatbot")
+    rows = []
+
+    for excluded_topic in target_topics:
+        filtered_df = working_df[working_df[TOPIC_COL] != excluded_topic].copy()
+        if filtered_df.empty:
+            continue
+
+        try:
+            loo_df = _compute_full_metric_table_from_integrated(filtered_df)
+        except Exception as exc:
+            print(f"[WARN] Sensitivity skipped for topic '{excluded_topic}': {exc}")
+            continue
+
+        loo_df = _remove_overall_average_row(loo_df).set_index("Chatbot")
+        shared_chatbots = [chatbot for chatbot in full_df.index if chatbot in loo_df.index]
+
+        for chatbot in shared_chatbots:
+            for metric in metric_cols:
+                if metric not in loo_df.columns:
+                    continue
+
+                full_score = pd.to_numeric(pd.Series([full_df.loc[chatbot, metric]]), errors="coerce").iloc[0]
+                loo_score = pd.to_numeric(pd.Series([loo_df.loc[chatbot, metric]]), errors="coerce").iloc[0]
+
+                if pd.isna(full_score) or pd.isna(loo_score):
+                    continue
+
+                normalized_full_score = _normalize_metric_value(metric, full_score)
+                normalized_loo_score = _normalize_metric_value(metric, loo_score)
+
+                rows.append(
+                    {
+                        "Excluded Topic": excluded_topic,
+                        "Chatbot": chatbot,
+                        "Metric": metric,
+                        "Full Score": round(float(full_score), 4),
+                        "Leave-One-Topic-Out Score": round(float(loo_score), 4),
+                        "Absolute Delta": round(abs(float(loo_score) - float(full_score)), 4),
+                        "Normalized Full Score": round(float(normalized_full_score), 4),
+                        "Normalized Leave-One-Topic-Out Score": round(float(normalized_loo_score), 4),
+                        "Normalized Absolute Delta": round(abs(float(normalized_loo_score) - float(normalized_full_score)), 4),
+                    }
+                )
+
+    return pd.DataFrame(rows)
+
+
+def save_leave_one_topic_out_sensitivity(sensitivity_df: pd.DataFrame):
+    if sensitivity_df.empty:
+        return
+    _ensure_dir(ROBUSTNESS_DIR)
+    sensitivity_df.to_csv(LEAVE_ONE_TOPIC_OUT_CSV_PATH, index=False)
+    normalized_cols = [
+        "Excluded Topic",
+        "Chatbot",
+        "Metric",
+        "Normalized Full Score",
+        "Normalized Leave-One-Topic-Out Score",
+        "Normalized Absolute Delta",
+    ]
+    existing_cols = [col for col in normalized_cols if col in sensitivity_df.columns]
+    sensitivity_df[existing_cols].to_csv(LEAVE_ONE_TOPIC_OUT_NORMALIZED_CSV_PATH, index=False)
+
+
+def _plot_sensitivity_summary(
+    sensitivity_df: pd.DataFrame,
+    delta_col: str,
+    ylabel: str,
+    title: str,
+    output_path: str,
+):
+    if sensitivity_df.empty or delta_col not in sensitivity_df.columns:
+        return
+    summary_df = (
+        sensitivity_df
+        .groupby("Metric", as_index=False)[delta_col]
+        .mean()
+        .sort_values(delta_col, ascending=False)
+    )
+    if summary_df.empty:
+        return
+
+    plt.figure(figsize=(max(9, len(summary_df) * 1.15), 5.8))
+    plt.bar(summary_df["Metric"], summary_df[delta_col])
+    plt.xticks(rotation=45, ha="right")
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=DPI)
+    plt.close()
+
+
+def plot_leave_one_topic_out_sensitivity(sensitivity_df: pd.DataFrame):
+    if sensitivity_df.empty:
+        return
+    _ensure_dir(PLOTS_DIR)
+    _plot_sensitivity_summary(
+        sensitivity_df=sensitivity_df,
+        delta_col="Absolute Delta",
+        ylabel="Mean absolute change after removing one topic",
+        title="Leave-One-Topic-Out Sensitivity",
+        output_path=LEAVE_ONE_TOPIC_OUT_PLOT_PATH,
+    )
+    _plot_sensitivity_summary(
+        sensitivity_df=sensitivity_df,
+        delta_col="Normalized Absolute Delta",
+        ylabel="Mean normalized absolute change after removing one topic",
+        title="Leave-One-Topic-Out Sensitivity, Normalized Metric Scale",
+        output_path=LEAVE_ONE_TOPIC_OUT_NORMALIZED_PLOT_PATH,
+    )
+
+
+def run_robustness_outputs(
+    evaluation_df: pd.DataFrame,
+    integrated_responses: pd.DataFrame | None = None,
+):
+    corr_df = generate_metric_correlation_matrix(evaluation_df)
+    save_metric_correlation_matrix(corr_df)
+    plot_metric_correlation_matrix(corr_df)
+
+    if integrated_responses is not None:
+        sensitivity_df = generate_leave_one_topic_out_sensitivity(
+            integrated_responses=integrated_responses,
+            full_evaluation_df=evaluation_df,
+        )
+        save_leave_one_topic_out_sensitivity(sensitivity_df)
+        plot_leave_one_topic_out_sensitivity(sensitivity_df)
+
+
 def process_all_outputs(
     evaluation_df: pd.DataFrame,
+    integrated_responses: pd.DataFrame | None = None,
     not_hate_df: pd.DataFrame | None = None,
     urgency_df: pd.DataFrame | None = None,
     risk_factor_df: pd.DataFrame | None = None,
@@ -288,3 +603,8 @@ def process_all_outputs(
         plot_urgency_dimension(urgency_df)
     if risk_factor_df is not None:
         plot_risk_factor_dimension(risk_factor_df)
+
+    run_robustness_outputs(
+        evaluation_df=evaluation_df,
+        integrated_responses=integrated_responses,
+    )

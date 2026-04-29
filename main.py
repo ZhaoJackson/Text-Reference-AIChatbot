@@ -109,7 +109,13 @@ def main():
     save_evaluation_to_csv(OUTPUT_CSV_PATH, evaluation_df)
 
     # Step 7: plotting only; Plots/ contains figures, not CSV files.
-    process_all_outputs(evaluation_df, not_hate_df, urgency_df, risk_factor_df)
+    process_all_outputs(
+        evaluation_df=evaluation_df,
+        integrated_responses=integrated_responses,
+        not_hate_df=not_hate_df,
+        urgency_df=urgency_df,
+        risk_factor_df=risk_factor_df,
+    )
 
     print("Benchmark evaluation complete.")
     print(f"Main results saved to: {OUTPUT_CSV_PATH}")

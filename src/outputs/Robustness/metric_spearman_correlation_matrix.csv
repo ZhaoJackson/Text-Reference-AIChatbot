@@ -1,8 +1,0 @@
-,ROUGE Lexical Overlap,METEOR Lexical-Semantic Alignment,Negative Sentiment Probability,Flesch Reading Ease,Non-Hateful Language Probability,Crisis-Response Reference Similarity,Risk-Assessment Reference Similarity
-ROUGE Lexical Overlap,1.0,0.8333,0.3095,0.8333,-0.2474,0.4762,0.0476
-METEOR Lexical-Semantic Alignment,0.8333,1.0,-0.0714,0.6429,-0.4124,0.7143,0.1667
-Negative Sentiment Probability,0.3095,-0.0714,1.0,0.4286,0.2474,-0.1905,0.2381
-Flesch Reading Ease,0.8333,0.6429,0.4286,1.0,-0.5774,0.381,0.0476
-Non-Hateful Language Probability,-0.2474,-0.4124,0.2474,-0.5774,1.0,-0.2474,0.2474
-Crisis-Response Reference Similarity,0.4762,0.7143,-0.1905,0.381,-0.2474,1.0,0.3571
-Risk-Assessment Reference Similarity,0.0476,0.1667,0.2381,0.0476,0.2474,0.3571,1.0

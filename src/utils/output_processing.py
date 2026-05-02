@@ -7,7 +7,9 @@ from __future__ import annotations
 import os
 import re
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+from scipy import stats
 from src.commonconst import *
 
 def _sanitize_filename(name: str) -> str:
@@ -266,10 +268,11 @@ def save_overall_summary_table(summary_df: pd.DataFrame, output_path: str):
 
 
 # =================================
-# ROBUSTNESS / SENSITIVITY ANALYSES
+# ROBUSTNESS / INFERENTIAL ANALYSIS: ONE-WAY ANOVA
 # =================================
 
 def _get_available_robustness_metrics(df: pd.DataFrame) -> list[str]:
+    """Return the 7 benchmark metrics that are present and numerically usable."""
     available = []
     for metric in ROBUSTNESS_METRICS:
         if metric in df.columns:
@@ -277,121 +280,6 @@ def _get_available_robustness_metrics(df: pd.DataFrame) -> list[str]:
             if values.notna().sum() >= 2:
                 available.append(metric)
     return available
-
-
-def _normalize_metric_value(metric: str, value: float) -> float:
-    denominator = METRIC_NORMALIZATION_DENOMINATORS.get(metric, 1.0)
-    if denominator in [0, None] or pd.isna(value):
-        return np.nan
-    return float(value) / float(denominator)
-
-
-def generate_metric_correlation_matrix(evaluation_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Descriptive Spearman correlation matrix across benchmark metrics.
-
-    This output is a robustness/diagnostic analysis rather than confirmatory
-    null-hypothesis inference because the number of evaluated chatbot systems is small.
-    """
-    clean_df = _remove_overall_average_row(evaluation_df)
-    metric_cols = _get_available_robustness_metrics(clean_df)
-
-    if len(metric_cols) < 2:
-        print("[WARN] Correlation matrix skipped: fewer than two numeric metrics available.")
-        return pd.DataFrame()
-
-    metric_df = clean_df[metric_cols].apply(pd.to_numeric, errors="coerce")
-    return metric_df.corr(method="spearman").round(4)
-
-
-def save_metric_correlation_matrix(corr_df: pd.DataFrame):
-    if corr_df.empty:
-        return
-    _ensure_dir(ROBUSTNESS_DIR)
-    corr_df.to_csv(CORRELATION_MATRIX_CSV_PATH)
-
-
-def plot_metric_correlation_matrix(corr_df: pd.DataFrame):
-    if corr_df.empty:
-        return
-
-    _ensure_dir(PLOTS_DIR)
-    labels = corr_df.columns.tolist()
-    matrix = corr_df.to_numpy(dtype=float)
-
-    plt.figure(figsize=(max(9, len(labels) * 1.2), max(7, len(labels) * 1.0)))
-    plt.imshow(matrix, vmin=-1, vmax=1)
-    plt.colorbar(label="Spearman correlation")
-    plt.xticks(range(len(labels)), labels, rotation=45, ha="right")
-    plt.yticks(range(len(labels)), labels)
-
-    for i in range(len(labels)):
-        for j in range(len(labels)):
-            value = matrix[i, j]
-            if np.isfinite(value):
-                plt.text(j, i, f"{value:.2f}", ha="center", va="center", fontsize=8)
-
-    plt.title("Spearman Correlation Across Benchmark Metrics")
-    plt.tight_layout()
-    plt.savefig(CORRELATION_MATRIX_PLOT_PATH, dpi=DPI)
-    plt.close()
-
-
-def _merge_component_scores_for_robustness(
-    evaluation_df: pd.DataFrame,
-    not_hate_df: pd.DataFrame,
-    urgency_df: pd.DataFrame,
-    risk_factor_df: pd.DataFrame,
-) -> pd.DataFrame:
-    merged_df = evaluation_df.copy()
-    for component_df in [not_hate_df, urgency_df, risk_factor_df]:
-        if component_df is None or component_df.empty:
-            continue
-        clean_component_df = component_df.copy()
-        merge_cols = [col for col in clean_component_df.columns if col != "Response"]
-        clean_component_df = clean_component_df[merge_cols]
-        duplicate_cols = [
-            col for col in clean_component_df.columns
-            if col != "Chatbot" and col in merged_df.columns
-        ]
-        if duplicate_cols:
-            merged_df = merged_df.drop(columns=duplicate_cols)
-        merged_df = merged_df.merge(clean_component_df, on="Chatbot", how="left")
-    return merged_df
-
-
-def _compute_full_metric_table_from_integrated(integrated_responses: pd.DataFrame) -> pd.DataFrame:
-    """Recompute all benchmark metrics from a filtered integrated response table."""
-    from src.utils.evaluation_algo import (
-        generate_evaluation_scores,
-        generate_not_hate_metric_scores,
-        generate_urgency_dimension_scores,
-        generate_risk_factor_dimension_scores,
-    )
-
-    evaluation_df = generate_evaluation_scores(
-        integrated_responses,
-        include_overall_average=False,
-    )
-    not_hate_df = generate_not_hate_metric_scores(
-        integrated_responses,
-        include_overall_average=False,
-    )
-    urgency_df = generate_urgency_dimension_scores(
-        integrated_responses,
-        include_overall_average=False,
-    )
-    risk_factor_df = generate_risk_factor_dimension_scores(
-        integrated_responses,
-        include_overall_average=False,
-    )
-
-    return _merge_component_scores_for_robustness(
-        evaluation_df=evaluation_df,
-        not_hate_df=not_hate_df,
-        urgency_df=urgency_df,
-        risk_factor_df=risk_factor_df,
-    )
 
 
 def _topic_sort_key_for_robustness(topic: str):
@@ -402,180 +290,244 @@ def _topic_sort_key_for_robustness(topic: str):
     return (len(ROBUSTNESS_TOPIC_ORDER) + len(CANONICAL_TOPIC_ORDER) + 1, topic)
 
 
-def generate_leave_one_topic_out_sensitivity(
-    integrated_responses: pd.DataFrame,
-    full_evaluation_df: pd.DataFrame,
-) -> pd.DataFrame:
-    """
-    Leave-one-topic-out sensitivity analysis limited to formal assessment topics.
+def _eta_squared_from_groups(groups: list[np.ndarray]) -> float:
+    """Classical one-way ANOVA eta-squared: SS_between / SS_total."""
+    clean_groups = [np.asarray(g, dtype=float) for g in groups if len(g) > 0]
+    if len(clean_groups) < 2:
+        return np.nan
 
-    The scope note/disclaimer topic is intentionally excluded. Flesch Reading Ease
-    is also normalized to a 0-1 scale for cross-metric delta summaries.
+    all_values = np.concatenate(clean_groups)
+    if all_values.size == 0:
+        return np.nan
+
+    grand_mean = float(np.mean(all_values))
+    ss_between = sum(len(g) * (float(np.mean(g)) - grand_mean) ** 2 for g in clean_groups)
+    ss_total = float(np.sum((all_values - grand_mean) ** 2))
+
+    if ss_total <= 0:
+        return 0.0
+    return float(ss_between / ss_total)
+
+
+def generate_topic_level_metric_scores_for_anova(integrated_responses: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build the topic-level score table used by one-way ANOVA.
+
+    Why this is needed:
+    - evaluation_scores.csv has one macro-average row per chatbot, which is not enough
+      for ANOVA because each chatbot would have only one observation per metric.
+    - This table creates repeated observations at the topic level, then compares chatbot
+      groups within each metric.
+
+    Scope:
+    - Keeps the 7 benchmark metrics in ROBUSTNESS_METRICS.
+    - Uses only formal assessment topics in ROBUSTNESS_TOPIC_ORDER.
+    - Excludes the note/disclaimer topic.
     """
     if integrated_responses is None or integrated_responses.empty:
-        print("[WARN] Leave-one-topic-out sensitivity skipped: integrated responses not provided.")
+        print("[WARN] ANOVA skipped: integrated responses not provided.")
         return pd.DataFrame()
 
-    from src.utils.evaluation_algo import standardize_topic
-
-    working_df = integrated_responses.copy()
-    if TOPIC_COL not in working_df.columns:
-        print("[WARN] Leave-one-topic-out sensitivity skipped: topic column not found.")
-        return pd.DataFrame()
-
-    working_df[TOPIC_COL] = working_df[TOPIC_COL].apply(standardize_topic)
-
-    available_reference_topics = set(
-        working_df.loc[
-            working_df[PLATFORM_COL].astype(str).str.lower() == HUMAN_PLATFORM.lower(),
-            TOPIC_COL,
-        ]
-        .dropna()
-        .astype(str)
-        .tolist()
+    from src.utils.evaluation_algo import (
+        calculate_average_rouge,
+        calculate_meteor,
+        evaluate_negative_tone_probability,
+        evaluate_readability_score,
+        get_not_hate_probability,
+        get_reference_alignment_score,
+        prepare_aggregated_views,
     )
 
-    target_topics = [topic for topic in ROBUSTNESS_TOPIC_ORDER if topic in available_reference_topics]
+    views = prepare_aggregated_views(integrated_responses)
+    reference_topic_map = views["reference_topic_map"]
+    chatbot_topic_df = views["chatbot_topic_df"]
+
+    target_topics = [
+        topic for topic in ROBUSTNESS_TOPIC_ORDER
+        if topic in reference_topic_map
+    ]
     target_topics = sorted(target_topics, key=_topic_sort_key_for_robustness)
 
-    full_df = _remove_overall_average_row(full_evaluation_df).copy()
-    metric_cols = _get_available_robustness_metrics(full_df)
-
     if not target_topics:
-        print("[WARN] Leave-one-topic-out sensitivity skipped: none of the target topics were found.")
-        return pd.DataFrame()
-    if not metric_cols:
-        print("[WARN] Leave-one-topic-out sensitivity skipped: no robustness metrics found.")
+        print("[WARN] ANOVA skipped: none of the formal benchmark topics were found.")
         return pd.DataFrame()
 
-    full_df = full_df.set_index("Chatbot")
     rows = []
+    for _, row in chatbot_topic_df.iterrows():
+        chatbot = str(row["Chatbot"]).strip()
+        topic = str(row[TOPIC_COL]).strip()
+        response_text = str(row["TopicResponse"]).strip()
 
-    for excluded_topic in target_topics:
-        filtered_df = working_df[working_df[TOPIC_COL] != excluded_topic].copy()
-        if filtered_df.empty:
+        if topic not in target_topics:
             continue
 
-        try:
-            loo_df = _compute_full_metric_table_from_integrated(filtered_df)
-        except Exception as exc:
-            print(f"[WARN] Sensitivity skipped for topic '{excluded_topic}': {exc}")
+        reference_text = str(reference_topic_map.get(topic, "")).strip()
+        if not reference_text or not response_text:
             continue
 
-        loo_df = _remove_overall_average_row(loo_df).set_index("Chatbot")
-        shared_chatbots = [chatbot for chatbot in full_df.index if chatbot in loo_df.index]
+        base_row = {
+            "Chatbot": chatbot,
+            "Topic": topic,
+            "ROUGE Lexical Overlap": calculate_average_rouge(reference_text, response_text),
+            "METEOR Lexical-Semantic Alignment": calculate_meteor(reference_text, response_text),
+            "Negative Sentiment Probability": evaluate_negative_tone_probability(response_text),
+            "Flesch Reading Ease": evaluate_readability_score(response_text),
+            "Non-Hateful Language Probability": round(float(get_not_hate_probability(response_text)), 4),
+            "Crisis-Response Reference Similarity": np.nan,
+            "Risk-Assessment Reference Similarity": np.nan,
+        }
 
-        for chatbot in shared_chatbots:
-            for metric in metric_cols:
-                if metric not in loo_df.columns:
-                    continue
+        if topic in URGENCY_REFERENCE_TOPICS:
+            base_row["Crisis-Response Reference Similarity"] = round(
+                float(get_reference_alignment_score(response_text, reference_text)), 4
+            )
 
-                full_score = pd.to_numeric(pd.Series([full_df.loc[chatbot, metric]]), errors="coerce").iloc[0]
-                loo_score = pd.to_numeric(pd.Series([loo_df.loc[chatbot, metric]]), errors="coerce").iloc[0]
+        if topic in RISK_FACTOR_REFERENCE_TOPICS:
+            base_row["Risk-Assessment Reference Similarity"] = round(
+                float(get_reference_alignment_score(response_text, reference_text)), 4
+            )
 
-                if pd.isna(full_score) or pd.isna(loo_score):
-                    continue
+        rows.append(base_row)
 
-                normalized_full_score = _normalize_metric_value(metric, full_score)
-                normalized_loo_score = _normalize_metric_value(metric, loo_score)
+    topic_level_df = pd.DataFrame(rows)
+    if topic_level_df.empty:
+        return topic_level_df
 
-                rows.append(
-                    {
-                        "Excluded Topic": excluded_topic,
-                        "Chatbot": chatbot,
-                        "Metric": metric,
-                        "Full Score": round(float(full_score), 4),
-                        "Leave-One-Topic-Out Score": round(float(loo_score), 4),
-                        "Absolute Delta": round(abs(float(loo_score) - float(full_score)), 4),
-                        "Normalized Full Score": round(float(normalized_full_score), 4),
-                        "Normalized Leave-One-Topic-Out Score": round(float(normalized_loo_score), 4),
-                        "Normalized Absolute Delta": round(abs(float(normalized_loo_score) - float(normalized_full_score)), 4),
-                    }
-                )
+    topic_level_df["Topic"] = pd.Categorical(
+        topic_level_df["Topic"],
+        categories=target_topics,
+        ordered=True,
+    )
+    topic_level_df = topic_level_df.sort_values(["Chatbot", "Topic"]).reset_index(drop=True)
+    return topic_level_df
+
+
+def generate_oneway_anova_by_metric(topic_level_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Run one-way ANOVA for each benchmark metric.
+
+    For each metric, the null hypothesis is that the mean topic-level score is equal
+    across chatbot systems. The grouping variable is Chatbot.
+    """
+    if topic_level_df is None or topic_level_df.empty:
+        print("[WARN] ANOVA skipped: topic-level metric table is empty.")
+        return pd.DataFrame()
+
+    metric_cols = _get_available_robustness_metrics(topic_level_df)
+    if not metric_cols:
+        print("[WARN] ANOVA skipped: no numeric robustness metrics available.")
+        return pd.DataFrame()
+
+    rows = []
+    for metric in metric_cols:
+        metric_df = topic_level_df[["Chatbot", metric]].copy()
+        metric_df[metric] = pd.to_numeric(metric_df[metric], errors="coerce")
+        metric_df = metric_df.dropna(subset=[metric])
+
+        grouped = [
+            group[metric].to_numpy(dtype=float)
+            for _, group in metric_df.groupby("Chatbot")
+            if group[metric].notna().sum() > 0
+        ]
+        group_sizes = {
+            str(chatbot): int(group[metric].notna().sum())
+            for chatbot, group in metric_df.groupby("Chatbot")
+        }
+
+        k = len(grouped)
+        total_n = int(sum(len(g) for g in grouped))
+        df_between = k - 1
+        df_within = total_n - k
+
+        if k < 2 or df_within <= 0:
+            f_statistic = np.nan
+            p_value = np.nan
+            eta_squared = np.nan
+        else:
+            f_statistic, p_value = stats.f_oneway(*grouped)
+            eta_squared = _eta_squared_from_groups(grouped)
+
+        rows.append(
+            {
+                "Metric": metric,
+                "Number of Chatbot Groups": k,
+                "Total Topic-Level Observations": total_n,
+                "df_between": df_between,
+                "df_within": df_within,
+                "F Statistic": round(float(f_statistic), 4) if pd.notna(f_statistic) else np.nan,
+                "p-value": round(float(p_value), 6) if pd.notna(p_value) else np.nan,
+                "Eta Squared": round(float(eta_squared), 4) if pd.notna(eta_squared) else np.nan,
+                "Group Sizes": group_sizes,
+                "Interpretation": (
+                    "Statistically significant chatbot differences (p < .05)"
+                    if pd.notna(p_value) and float(p_value) < 0.05
+                    else "No statistically significant chatbot differences at p < .05"
+                    if pd.notna(p_value)
+                    else "Insufficient topic-level observations for ANOVA"
+                ),
+            }
+        )
 
     return pd.DataFrame(rows)
 
 
-def save_leave_one_topic_out_sensitivity(sensitivity_df: pd.DataFrame):
-    if sensitivity_df.empty:
-        return
-    _ensure_dir(ROBUSTNESS_DIR)
-    sensitivity_df.to_csv(LEAVE_ONE_TOPIC_OUT_CSV_PATH, index=False)
-    normalized_cols = [
-        "Excluded Topic",
-        "Chatbot",
-        "Metric",
-        "Normalized Full Score",
-        "Normalized Leave-One-Topic-Out Score",
-        "Normalized Absolute Delta",
-    ]
-    existing_cols = [col for col in normalized_cols if col in sensitivity_df.columns]
-    sensitivity_df[existing_cols].to_csv(LEAVE_ONE_TOPIC_OUT_NORMALIZED_CSV_PATH, index=False)
-
-
-def _plot_sensitivity_summary(
-    sensitivity_df: pd.DataFrame,
-    delta_col: str,
-    ylabel: str,
-    title: str,
-    output_path: str,
+def save_oneway_anova_outputs(
+    anova_df: pd.DataFrame,
+    topic_level_df: pd.DataFrame,
 ):
-    if sensitivity_df.empty or delta_col not in sensitivity_df.columns:
-        return
-    summary_df = (
-        sensitivity_df
-        .groupby("Metric", as_index=False)[delta_col]
-        .mean()
-        .sort_values(delta_col, ascending=False)
-    )
-    if summary_df.empty:
-        return
-
-    plt.figure(figsize=(max(9, len(summary_df) * 1.15), 5.8))
-    plt.bar(summary_df["Metric"], summary_df[delta_col])
-    plt.xticks(rotation=45, ha="right")
-    plt.ylabel(ylabel)
-    plt.title(title)
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=DPI)
-    plt.close()
+    _ensure_dir(ROBUSTNESS_DIR)
+    if topic_level_df is not None and not topic_level_df.empty:
+        topic_level_df.to_csv(TOPIC_LEVEL_METRIC_SCORES_CSV_PATH, index=False)
+    if anova_df is not None and not anova_df.empty:
+        anova_df.to_csv(ONEWAY_ANOVA_CSV_PATH, index=False)
 
 
-def plot_leave_one_topic_out_sensitivity(sensitivity_df: pd.DataFrame):
-    if sensitivity_df.empty:
+def plot_oneway_anova_p_values(anova_df: pd.DataFrame):
+    if anova_df is None or anova_df.empty or "p-value" not in anova_df.columns:
         return
+
+    plot_df = anova_df.copy()
+    plot_df["p-value"] = pd.to_numeric(plot_df["p-value"], errors="coerce")
+    plot_df = plot_df.dropna(subset=["p-value"])
+    if plot_df.empty:
+        return
+
+    # Use -log10(p) so smaller p-values are easier to read visually.
+    plot_df["-log10(p-value)"] = -np.log10(plot_df["p-value"].clip(lower=1e-300))
+
     _ensure_dir(PLOTS_DIR)
-    _plot_sensitivity_summary(
-        sensitivity_df=sensitivity_df,
-        delta_col="Absolute Delta",
-        ylabel="Mean absolute change after removing one topic",
-        title="Leave-One-Topic-Out Sensitivity",
-        output_path=LEAVE_ONE_TOPIC_OUT_PLOT_PATH,
-    )
-    _plot_sensitivity_summary(
-        sensitivity_df=sensitivity_df,
-        delta_col="Normalized Absolute Delta",
-        ylabel="Mean normalized absolute change after removing one topic",
-        title="Leave-One-Topic-Out Sensitivity, Normalized Metric Scale",
-        output_path=LEAVE_ONE_TOPIC_OUT_NORMALIZED_PLOT_PATH,
-    )
+    plt.figure(figsize=(max(9, len(plot_df) * 1.2), 5.8))
+    plt.bar(plot_df["Metric"], plot_df["-log10(p-value)"])
+    plt.axhline(y=-np.log10(0.05), linestyle="--", linewidth=1.8, label="p = .05")
+    plt.xticks(rotation=45, ha="right")
+    plt.ylabel("-log10(p-value)")
+    plt.title("One-Way ANOVA by Benchmark Metric")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(ONEWAY_ANOVA_PLOT_PATH, dpi=DPI)
+    plt.close()
 
 
 def run_robustness_outputs(
     evaluation_df: pd.DataFrame,
     integrated_responses: pd.DataFrame | None = None,
 ):
-    corr_df = generate_metric_correlation_matrix(evaluation_df)
-    save_metric_correlation_matrix(corr_df)
-    plot_metric_correlation_matrix(corr_df)
+    """
+    Robustness output is intentionally limited to one-way ANOVA.
 
-    if integrated_responses is not None:
-        sensitivity_df = generate_leave_one_topic_out_sensitivity(
-            integrated_responses=integrated_responses,
-            full_evaluation_df=evaluation_df,
-        )
-        save_leave_one_topic_out_sensitivity(sensitivity_df)
-        plot_leave_one_topic_out_sensitivity(sensitivity_df)
+    Removed from the active pipeline:
+    - Spearman metric-correlation matrix
+    - leave-one-topic-out sensitivity checks
+    - normalized sensitivity summaries
+    """
+    if integrated_responses is None:
+        print("[WARN] ANOVA skipped: integrated_responses is required for topic-level ANOVA.")
+        return
+
+    topic_level_df = generate_topic_level_metric_scores_for_anova(integrated_responses)
+    anova_df = generate_oneway_anova_by_metric(topic_level_df)
+    save_oneway_anova_outputs(anova_df=anova_df, topic_level_df=topic_level_df)
+    plot_oneway_anova_p_values(anova_df)
 
 
 def process_all_outputs(

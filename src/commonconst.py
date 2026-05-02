@@ -65,38 +65,23 @@ REFERENCE_PROCESSED_CSV_PATH = os.path.join(OUTPUT_DIR, "processed_reference_tex
 
 
 # =================================
-# ROBUSTNESS / SENSITIVITY OUTPUTS
+# ROBUSTNESS / INFERENTIAL OUTPUTS
 # =================================
 ROBUSTNESS_DIR = os.path.join(OUTPUT_DIR, "Robustness")
 
-CORRELATION_MATRIX_CSV_PATH = os.path.join(
+ONEWAY_ANOVA_CSV_PATH = os.path.join(
     ROBUSTNESS_DIR,
-    "metric_spearman_correlation_matrix.csv",
+    "oneway_anova_by_metric.csv",
 )
 
-LEAVE_ONE_TOPIC_OUT_CSV_PATH = os.path.join(
+TOPIC_LEVEL_METRIC_SCORES_CSV_PATH = os.path.join(
     ROBUSTNESS_DIR,
-    "leave_one_topic_out_sensitivity.csv",
+    "topic_level_metric_scores_for_anova.csv",
 )
 
-LEAVE_ONE_TOPIC_OUT_NORMALIZED_CSV_PATH = os.path.join(
-    ROBUSTNESS_DIR,
-    "leave_one_topic_out_sensitivity_normalized.csv",
-)
-
-CORRELATION_MATRIX_PLOT_PATH = os.path.join(
+ONEWAY_ANOVA_PLOT_PATH = os.path.join(
     PLOTS_DIR,
-    "metric_spearman_correlation_matrix.png",
-)
-
-LEAVE_ONE_TOPIC_OUT_PLOT_PATH = os.path.join(
-    PLOTS_DIR,
-    "leave_one_topic_out_mean_absolute_delta.png",
-)
-
-LEAVE_ONE_TOPIC_OUT_NORMALIZED_PLOT_PATH = os.path.join(
-    PLOTS_DIR,
-    "leave_one_topic_out_normalized_mean_absolute_delta.png",
+    "oneway_anova_p_values_by_metric.png",
 )
 
 ROBUSTNESS_METRICS = [
@@ -109,7 +94,7 @@ ROBUSTNESS_METRICS = [
     "Risk-Assessment Reference Similarity",
 ]
 
-# Sensitivity/inferential robustness checks are limited to the formal assessment topics below.
+# ANOVA is run only on the formal benchmark topics below.
 # The scope note/disclaimer topic is intentionally excluded.
 ROBUSTNESS_TOPIC_ORDER = [
     "Current Suicidal Ideation",
@@ -121,18 +106,6 @@ ROBUSTNESS_TOPIC_ORDER = [
     "Risk Level Interpretation",
     "Other important assessment aspects",
 ]
-
-# Used only for normalized sensitivity summaries/plots.
-# Correlations are scale-invariant, but leave-one-topic-out deltas need comparable ranges.
-METRIC_NORMALIZATION_DENOMINATORS = {
-    "ROUGE Lexical Overlap": 1.0,
-    "METEOR Lexical-Semantic Alignment": 1.0,
-    "Negative Sentiment Probability": 1.0,
-    "Flesch Reading Ease": 100.0,
-    "Non-Hateful Language Probability": 1.0,
-    "Crisis-Response Reference Similarity": 1.0,
-    "Risk-Assessment Reference Similarity": 1.0,
-}
 
 # Split component CSVs are intentionally not written to Plots/.
 # Keep these aliases only for backward compatibility with older scripts.
